@@ -94,6 +94,8 @@ pub fn get_action(event: &Event, tb_nr: RouteId) -> Action {
                 KeyCode::Tab => Action::TabNext,
                 KeyCode::Char(c) => match c {
                     'q' => Action::Quit,
+                    'l' => Action::PodLogs,
+                    't' => Action::PodExec,
                     _ => Action::NOP,
                 },
                 _ => Action::NOP,

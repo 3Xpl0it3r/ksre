@@ -1,6 +1,8 @@
-pub mod app;
-pub mod event;
+mod app;
+mod event;
 mod kubernetes;
-pub mod tui;
+mod tui;
 
+pub use app::App;
 pub use kubernetes::{helper::default_kubernetes_client, reflector::PodReflector};
+pub use tui::Tui;

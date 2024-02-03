@@ -8,9 +8,9 @@ async fn main() -> Result<()> {
     // apiserver
     let (mut pod_informer, rx_pod_event) = PodReflector::new(kube_client.clone()).unwrap();
     // new instance tui, tui will start new coroutine to dispatch event from keyboard
-    let tui = tui::Tui::new()?;
+    let tui = Tui::new()?;
     // new instance app
-    let mut app = app::App::new(tui, rx_pod_event, kube_client.clone());
+    let mut app = App::new(tui, rx_pod_event, kube_client.clone());
 
     app.run().await.unwrap();
     pod_informer.shutdown()?;
