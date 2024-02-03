@@ -1,0 +1,9 @@
+[workspace]
+resolver = "2"
+members = [ "rsk8s-agent","rsk8s-tui"]
+
+
+[profile.release]
+
+[profile.dev]
+
