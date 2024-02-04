@@ -4,10 +4,22 @@ use k8s_openapi::api::core::v1::Pod;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Style, Stylize};
 use ratatui::widgets::{Block, BorderType, Borders, List, ListItem, Paragraph, Tabs};
+use ratatui::Frame;
 
 use super::color;
 use crate::app::action::Mode;
 use crate::app::state::StatefulList;
+
+pub(super) fn style_error() -> Style {
+    Style::default().fg(Color::Red)
+}
+
+pub(super) fn style_warn() -> Style {
+    Style::default().fg(Color::Yellow)
+}
+pub(super) fn style_info() -> Style {
+    Style::default().fg(Color::Green)
+}
 
 pub(super) fn titled_block(title: &'static str) -> Block {
     Block::default()
@@ -116,11 +128,21 @@ pub(super) fn selectable_list_with_filter<F: Fn() -> bool>(
     )
 }
 
-pub(super) fn debug_widget(msg: String) -> Paragraph<'static> {
+pub(super) fn debug_widget(msg: String, title: String) -> Paragraph<'static> {
     let msg_wideget = Paragraph::new(msg).block(
         Block::default()
             .borders(Borders::ALL)
-            .border_type(BorderType::Rounded),
+            .border_type(BorderType::Rounded)
+            .title(title),
     );
     msg_wideget
+}
+
+pub(super) fn outer_block(f: &mut Frame,title: &str, area: Rect) -> Rect {
+    let outer = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .style(Style::default()).title(title);
+    f.render_widget(outer, area);
+    Rect::new(area.x + 1, area.y + 1, area.width - 1, area.height - 1)
 }

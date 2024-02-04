@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use super::api::RtObject;
 
-type Indices<P, U> = HashMap<String, HashMap<Rc<String>, Rc<RtObject<P, U>>>>;
+type Indices<P, U> = HashMap<String, HashMap<String, Rc<RtObject<P, U>>>>;
 
 pub struct StoreIndex<P: Clone, U: Clone> {
     index: Indices<P, U>,
@@ -60,24 +60,24 @@ impl<P: Clone, U: Clone> StoreIndex<P, U> {
             "".to_string()
         };
         let pod_name = format!(
-            "{}/{}",
+            "{}:{}",
             obj.0.metadata.namespace.as_ref().unwrap(),
             obj.0.metadata.name.as_ref().unwrap()
         );
         if self.index.get(&namespace).is_none() {
-            let store = HashMap::from([(Rc::new(pod_name), Rc::new(obj))]);
+            let store = HashMap::from([(pod_name, Rc::new(obj))]);
             self.index.insert(namespace, store);
             Ok(())
         } else {
             let cache = self.index.get_mut(&namespace).unwrap();
-            cache.insert(Rc::new(pod_name), Rc::new(obj));
+            cache.insert(pod_name, Rc::new(obj));
             Ok(())
         }
     }
 
-    pub fn all_keys(&self, namespace: &str) -> Option<Vec<Rc<String>>> {
+    pub fn all_keys(&self, namespace: &str) -> Option<Vec<String>> {
         if namespace.eq("all") {
-            let mut result = Vec::<Rc<String>>::new();
+            let mut result = Vec::<String>::new();
             for ns in self.index.keys() {
                 result.extend(self.index.get(ns).unwrap().keys().cloned());
             }
@@ -89,7 +89,7 @@ impl<P: Clone, U: Clone> StoreIndex<P, U> {
                     .unwrap()
                     .keys()
                     .cloned()
-                    .collect::<Vec<Rc<String>>>(),
+                    .collect::<Vec<String>>(),
             )
         } else {
             None
@@ -115,9 +115,8 @@ impl<P: Clone, U: Clone> StoreIndex<P, U> {
         }
     }
 
-    pub fn get_value(&self, key: &Rc<String>) -> Option<Rc<RtObject<P, U>>> {
+    pub fn get_value(&self, key: &str) -> Option<Rc<RtObject<P, U>>> {
         let ns_name = key
-            .as_ref()
             .split('/')
             .map(|x| x.to_string())
             .collect::<Vec<String>>();

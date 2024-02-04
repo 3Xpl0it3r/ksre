@@ -4,11 +4,29 @@ use crossterm::event::{KeyCode, KeyEvent};
 
 use super::action::{Action, RouteId};
 
-struct KeyContext {
-    action: Action,
-    route_id: RouteId,
+pub(super) trait Handler {
+    fn handle(&mut self) {}
 }
 
+struct KeyContext<T: Handler> {
+    action: Action,
+    route_id: RouteId,
+    handler: T,
+}
+
+/* macro_rules! gen_keybind_struct {
+    ($($key:ident),*) => {
+        pub struct KeyBind{
+            $(pub $key: KeyContext),*
+        }
+    };
+}
+
+gen_keybind_struct!(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z); */
+
+struct KeyBindings {}
+
+// A.key.
 /*
  *
  * keybinds should be as
@@ -29,7 +47,6 @@ struct KeyContext {
  *
  * }
  */
-
 
 macro_rules! generate_keybindings {
     ($(($key:ident, $action:expr, $route_id:expr));*) => {

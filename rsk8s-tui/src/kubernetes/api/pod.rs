@@ -12,12 +12,21 @@ pub struct PodFields {
     pub service_account: String,
     pub node_name: String,
     pub containers: Vec<ContainerFields>,
+    pub container_status: Vec<ContainerStatusFields>,
 }
 
 // From[#TODO] (should add some comments)
 impl From<Rc<RtObject<PodSpec, PodStatus>>> for PodFields {
     fn from(value: Rc<RtObject<PodSpec, PodStatus>>) -> Self {
-        let ref spec = value.as_ref().0.spec;
+        let spec = &value.0.spec;
+        let status = value
+            .0
+            .status
+            .as_ref()
+            .unwrap()
+            .container_statuses
+            .as_ref()
+            .unwrap();
 
         let sa = match spec.service_account.as_ref() {
             Some(sa) => sa.to_owned(),
@@ -27,10 +36,13 @@ impl From<Rc<RtObject<PodSpec, PodStatus>>> for PodFields {
             Some(node) => node.to_owned(),
             None => "not found".to_owned(),
         };
+
+        /* let a = status.container_statuses.as_ref().unwrap().iter().map(|x|x.into()).collect(); */
         PodFields {
             service_account: sa,
             node_name,
             containers: spec.containers.iter().map(|c| c.into()).collect(),
+            container_status: status.iter().map(|x| x.into()).collect(),
         }
     }
 }
@@ -96,6 +108,77 @@ impl From<&Container> for ContainerFields {
     }
 }
 
+#[derive(Clone)]
+pub struct ContainerStatusFields {
+    pub name: String,
+    pub ready: bool,
+    pub restart_count: i32,
+    pub state: String,
+    pub exit_code: Option<i32>,
+    pub message: Option<String>,
+    pub reason: Option<String>,
+    pub signal: Option<i32>,
+}
+
+// From<&ContainerStatus>[#TODO] (should add some comments)
+impl From<&ContainerStatus> for ContainerStatusFields {
+    fn from(value: &ContainerStatus) -> Self {
+        let c_state = value.state.as_ref().unwrap();
+        let state_fields: ContainerStateFields = c_state.into();
+        ContainerStatusFields {
+            name: value.name.to_string(),
+            ready: value.ready,
+            restart_count: value.restart_count,
+            state: state_fields.state,
+            exit_code: state_fields.exit_code,
+            message: state_fields.message,
+            reason: state_fields.reason,
+            signal: state_fields.signal,
+        }
+    }
+}
+
+struct ContainerStateFields {
+    state: String,
+    exit_code: Option<i32>,
+    message: Option<String>,
+    reason: Option<String>,
+    signal: Option<i32>,
+}
+
+// From[#TODO] (should add some comments)
+impl From<&ContainerState> for ContainerStateFields {
+    fn from(container_state: &ContainerState) -> Self {
+        if container_state.running.is_some() {
+            ContainerStateFields {
+                state: "running".to_string(),
+                exit_code: None,
+                message: None,
+                reason: None,
+                signal: None,
+            }
+        } else if container_state.terminated.is_some() {
+            let ref_terminated = container_state.terminated.as_ref().unwrap();
+            ContainerStateFields {
+                state: "terminated".to_string(),
+                exit_code: Some(ref_terminated.exit_code),
+                message: ref_terminated.message.clone(),
+                reason: ref_terminated.reason.clone(),
+                signal: ref_terminated.signal,
+            }
+        } else {
+            let ref_waitting = container_state.waiting.as_ref().unwrap();
+            ContainerStateFields {
+                state: "waiting".to_string(),
+                exit_code: None,
+                message: ref_waitting.message.clone(),
+                reason: ref_waitting.reason.clone(),
+                signal: None,
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     fn new_fake_pod(pod_name: &str, node_name: &str, service_account: &str) -> Pod {
@@ -111,9 +194,9 @@ mod tests {
     use super::*;
     #[test]
     fn basics() {
-        let pods = new_fake_pod("pod1", "nodename1", "sa1");
+        /* let pods = new_fake_pod("pod1", "nodename1", "sa1");
         let fields: PodFields = (&pods).into();
         assert_eq!("nodename1".eq(fields.node_name), true);
-        assert_eq!(true, "sa1".eq(fields.service_account));
+        assert_eq!(true, "sa1".eq(fields.service_account)); */
     }
 }

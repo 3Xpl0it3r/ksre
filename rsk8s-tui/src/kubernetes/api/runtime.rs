@@ -9,9 +9,19 @@ use k8s_openapi::api::{
 };
 use kube::core::{Object, TypeMeta};
 
-
 // RtObject as Kbernetes runtime object
 pub struct RtObject<P: Clone, U: Clone>(pub Object<P, U>);
+
+// RtObject<>[#TODO] (should add some comments)
+impl<P: Clone, U: Clone> RtObject<P, U> {
+    fn resource_name(&mut self) -> String {
+        format!(
+            "{}:{}",
+            self.0.metadata.namespace.as_ref().unwrap(),
+            self.0.metadata.name.as_ref().unwrap()
+        )
+    }
+}
 
 // Debug[#TODO] (should add some comments)
 impl<P: Clone, U: Clone> Debug for RtObject<P, U> {

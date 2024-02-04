@@ -1,9 +1,11 @@
 mod action;
 mod job;
 mod ui;
-mod state;
+mod core;
 mod keybind;
+mod state;
 
 
-pub use state::App;
+pub use core::App;
+pub(self) use state::{AppState, StatefulList};
 

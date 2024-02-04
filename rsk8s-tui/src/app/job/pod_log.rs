@@ -8,10 +8,10 @@ use tokio_util::sync::CancellationToken;
 pub async fn tail_logs(
     cancellation_token: CancellationToken,
     kube_client: KubeClient,
-    tx_stdout: mpsc::Sender<String>,
+    writer: mpsc::Sender<String>,
     ns_pod: String,
 ) {
-    let mut nsd_pod = ns_pod.split('/');
+    let mut nsd_pod = ns_pod.split(':');
     let namespace = nsd_pod.next().unwrap();
     let pod_name = nsd_pod.next().unwrap();
 
@@ -24,9 +24,10 @@ pub async fn tail_logs(
             _ = cancellation_token.cancelled() => break,
             maybe_log = log_stream.try_next() => {
                 if let Ok(Some(line)) = maybe_log {
-                    tx_stdout.send(line).await.unwrap();
+                    writer.send(line).await.unwrap();
                 }
             }
         }
     }
 }
+

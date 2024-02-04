@@ -36,12 +36,16 @@ impl From<RouteId> for View {
     }
 }
 
-pub fn ui_main(f: &mut Frame, state: &mut AppState) {
+pub fn ui_main(
+    f: &mut Frame,
+    state: &mut AppState,
+    reader: tokio::sync::RwLockReadGuard<Vec<String>>,
+) {
     let chunks = util::vertical_chunks(vec![Constraint::Length(3), Constraint::Min(1)], f.size());
     draw_header(f, chunks[0], state.id_cur_route as usize);
 
     match state.id_cur_route.into() {
-        View::Pod => pod::draw(f, state, chunks[1]),
+        View::Pod => pod::draw(f, state, chunks[1], reader),
         View::Deploy => todo_fn(),
         View::Node => todo_fn(),
         View::Error => unreachable!(),
