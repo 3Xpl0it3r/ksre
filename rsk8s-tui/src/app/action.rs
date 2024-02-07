@@ -1,39 +1,42 @@
-use std::cmp::{self, Ordering};
 use std::usize;
 
-use color_eyre::eyre::Result;
-use crossterm::event::{KeyCode, KeyEvent};
-
-use crate::event::Event;
-
-pub struct Context {
-    tab: RouteId,
-    mode: Mode,
-}
+use super::AppState;
 
 const ROUTE_STEP: isize = 100;
 
-#[derive(Clone, Copy, PartialEq)]
-pub enum RouteId {
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum Route {
     PodIndex = 0,
-    PodInpu,
+    // -----pod begin
     PodList,
-    PodSecInfo,
-    PodStatus,
-    PodYaml,
+    PodState,
+    PodTerm,
     PodLog,
-    PodTerminal,
-    // ...gf.
+    // -----pod end
     PodEnd,
     DeployIndex = ROUTE_STEP,
-    // ...
     DeployEnd,
     NodeIndex = 2 * ROUTE_STEP,
     NodeEnd,
+    Any = 3 * ROUTE_STEP,
+    Flush,
+    Unreach = 4 * ROUTE_STEP,
+    Error,
+}
+
+impl Route {
+    pub fn in_guard(self, cur_route: Route) -> bool {
+        let guard = self as i32;
+        let cur_id = cur_route as i32;
+        return cur_id >= guard - ROUTE_STEP as i32 && cur_id <= guard;
+    }
+    pub fn route_step() -> isize {
+        ROUTE_STEP
+    }
 }
 
 // Ord[#TODO] (should add some comments)
-impl PartialOrd for RouteId {
+impl PartialOrd for Route {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         let this = *self as isize;
         let another = *other as isize;
@@ -41,23 +44,41 @@ impl PartialOrd for RouteId {
     }
 }
 
-impl RouteId {
+impl Route {
     pub fn next(self) -> Self {
         if self as usize == 200 {
-            RouteId::PodIndex
+            Route::PodIndex
         } else {
             let c_tb_nr = self as usize;
             match c_tb_nr {
-                0 => RouteId::DeployIndex,
-                100 => RouteId::NodeIndex,
+                0 => Route::DeployIndex,
+                100 => Route::NodeIndex,
                 _ => unreachable!(),
             }
         }
     }
 }
 
+pub struct RouteHandler {}
+impl RouteHandler {
+    pub fn pod_logs(state: &mut AppState, reader: Option<tokio::sync::RwLockReadGuard<String>>) {}
+
+    pub fn pod_exec(state: &mut AppState, reader: Option<tokio::sync::RwLockReadGuard<String>>) {}
+
+    pub fn route_switch(
+        state: &mut AppState,
+        reader: Option<tokio::sync::RwLockReadGuard<String>>,
+    ) {
+    }
+
+    pub fn refresh(state: &mut AppState, reader: Option<tokio::sync::RwLockReadGuard<String>>) {}
+}
+
+
+
+
 // endit mode
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum Mode {
     Insert,
     Normal,
@@ -65,6 +86,4 @@ pub enum Mode {
     // when live command mode, appstate will empty all event buffer from tui event channel
     Command,
 }
-
-#[derive(Debug)]
-pub enum Action {}
+// Eq[#TODO] (should add some comments)

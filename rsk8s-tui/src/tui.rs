@@ -18,12 +18,12 @@ use crate::event::Event;
 
 const DEFAULT_FRAME_RATE: f64 = 60.0;
 
-const DEBUG: bool = false;
+pub const DEBUG: bool = false;
 
 pub struct Tui {
     pub terminal: ratatui::Terminal<Backend<std::io::Stderr>>,
-    pub aptr_long_job: JoinHandle<()>,
-    pub aptr_cancellation: CancellationToken,
+    pub ptr_long_job: JoinHandle<()>,
+    pub ptr_cancell: CancellationToken,
     pub rx_event: Receiver<Event>,
     pub tx_event: Sender<Event>,
     pub nr_frame_rate: f64,
@@ -39,8 +39,8 @@ impl Default for Tui {
         let cancellation_token = CancellationToken::new();
         Self {
             terminal,
-            aptr_long_job: task,
-            aptr_cancellation: cancellation_token,
+            ptr_long_job: task,
+            ptr_cancell: cancellation_token,
             rx_event,
             tx_event,
             nr_frame_rate: frame_rate,
@@ -68,9 +68,9 @@ impl Tui {
 
         let frame_delay = std::time::Duration::from_secs_f64(second / self.nr_frame_rate);
         let _tx_event = self.tx_event.clone();
-        let _cancellation_token = self.aptr_cancellation.clone();
+        let _cancellation_token = self.ptr_cancell.clone();
 
-        self.aptr_long_job = tokio::spawn(async move {
+        self.ptr_long_job = tokio::spawn(async move {
             let mut event_reader = crossterm::event::EventStream::new();
             let mut frame_interval = tokio::time::interval(frame_delay);
             loop {
@@ -83,7 +83,7 @@ impl Tui {
                             Some(Ok(event)) => {
                                 if let CrosstermEvent::Key(key) = event {
                                     if key.kind == KeyEventKind::Press {
-                                        _tx_event.send(Event::Key(key)).await.unwrap();
+                                        _tx_event.send(Event::Key(key.into())).await.unwrap();
                                     }
                                 }
                             },
@@ -107,8 +107,8 @@ impl Tui {
     }
 
     pub fn stop(&mut self) -> Result<()> {
-        if !self.aptr_cancellation.is_cancelled() {
-            self.aptr_cancellation.cancel();
+        if !self.ptr_cancell.is_cancelled() {
+            self.ptr_cancell.cancel();
         }
         if crossterm::terminal::is_raw_mode_enabled()? {
             crossterm::terminal::disable_raw_mode()?;

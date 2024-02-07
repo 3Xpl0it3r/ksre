@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use k8s_openapi::api::core::v1::{
-    Container, ContainerState, ContainerStatus, Pod, PodSpec, PodStatus, Probe,
+    Container, ContainerState, ContainerStatus, PodSpec, PodStatus, Probe,
 };
 use k8s_openapi::apimachinery::pkg::util::intstr::IntOrString;
 
@@ -112,12 +112,12 @@ impl From<&Container> for ContainerFields {
 pub struct ContainerStatusFields {
     pub name: String,
     pub ready: bool,
-    pub restart_count: i32,
+    pub restart_count: String,
     pub state: String,
-    pub exit_code: Option<i32>,
-    pub message: Option<String>,
-    pub reason: Option<String>,
-    pub signal: Option<i32>,
+    pub exit_code: String,
+    pub message: String,
+    pub reason: String,
+    pub signal: String,
 }
 
 // From<&ContainerStatus>[#TODO] (should add some comments)
@@ -128,12 +128,12 @@ impl From<&ContainerStatus> for ContainerStatusFields {
         ContainerStatusFields {
             name: value.name.to_string(),
             ready: value.ready,
-            restart_count: value.restart_count,
-            state: state_fields.state,
-            exit_code: state_fields.exit_code,
-            message: state_fields.message,
-            reason: state_fields.reason,
-            signal: state_fields.signal,
+            restart_count: value.restart_count.to_string(),
+            state: state_fields.state.to_string(),
+            exit_code: state_fields.exit_code.unwrap_or(0).to_string(),
+            message: state_fields.message.unwrap_or("".to_string()).to_string(),
+            reason: state_fields.reason.unwrap_or("".to_string()).to_string(),
+            signal: state_fields.signal.unwrap_or(0).to_string(),
         }
     }
 }

@@ -25,12 +25,12 @@ impl<P: Clone, U: Clone> StoreIndex<P, U> {
         }
     }
 
-    pub fn batch_add(&mut self, obj_list: Vec<RtObject<P, U>>) -> Result<()> {
+    /* pub fn batch_add(&mut self, obj_list: Vec<RtObject<P, U>>) -> Result<()> {
         for obj in obj_list {
             self.add(obj).unwrap();
         }
         Ok(())
-    }
+    } */
 
     pub fn add(&mut self, obj: RtObject<P, U>) -> Result<()> {
         self.update(obj)
@@ -117,7 +117,7 @@ impl<P: Clone, U: Clone> StoreIndex<P, U> {
 
     pub fn get_value(&self, key: &str) -> Option<Rc<RtObject<P, U>>> {
         let ns_name = key
-            .split('/')
+            .split(':')
             .map(|x| x.to_string())
             .collect::<Vec<String>>();
         let ns = ns_name.get(0).unwrap();

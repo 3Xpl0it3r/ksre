@@ -76,7 +76,7 @@ pub(super) fn user_input(input_char: &'_ str, input_mode: Mode) -> Paragraph {
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title("Input Namespace (Prees e to edit, press esc to exit)")
+                .title("Input Your Command")
                 .border_type(BorderType::Rounded),
         )
 }
@@ -134,6 +134,15 @@ pub(super) fn debug_widget(msg: String, title: String) -> Paragraph<'static> {
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
             .title(title),
+    );
+    msg_wideget
+}
+
+pub(super) fn no_border_windows(msg: String) -> Paragraph<'static> {
+    let msg_wideget = Paragraph::new(msg).block(
+        Block::default()
+            .borders(Borders::NONE)
+            .border_type(BorderType::Rounded)
     );
     msg_wideget
 }

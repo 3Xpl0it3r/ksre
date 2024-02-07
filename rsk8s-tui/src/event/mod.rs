@@ -1,15 +1,17 @@
 use crate::kubernetes::api::RtObject;
 use crossterm::event::KeyEvent;
 
-
 mod key;
 
-#[derive(Debug, Clone)]
+pub use key::CusKey;
+
+#[derive(Debug, Clone, Copy)]
 pub enum Event {
     Tick,
-    Key(KeyEvent),
+    Key(CusKey),
     Error,
 }
+
 
 #[derive(Debug, Clone)]
 pub enum KubeEvent<P: Clone, U: Clone> {

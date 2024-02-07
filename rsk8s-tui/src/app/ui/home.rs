@@ -5,7 +5,7 @@ use ratatui::style::{Color, Style};
 use ratatui::widgets::Tabs;
 use ratatui::Frame;
 
-use crate::app::action::RouteId;
+use crate::app::action::Route;
 use crate::app::state::AppState;
 
 use super::color;
@@ -22,13 +22,13 @@ pub enum View {
 }
 
 // From[#TODO] (should add some comments)
-impl From<RouteId> for View {
-    fn from(value: RouteId) -> Self {
-        if value >= RouteId::PodIndex && value <= RouteId::PodEnd {
+impl From<Route> for View {
+    fn from(value: Route) -> Self {
+        if value >= Route::PodIndex && value <= Route::PodEnd {
             View::Pod
-        } else if value >= RouteId::DeployIndex && value <= RouteId::DeployEnd {
+        } else if value >= Route::DeployIndex && value <= Route::DeployEnd {
             View::Deploy
-        } else if value >= RouteId::NodeIndex && value <= RouteId::NodeEnd {
+        } else if value >= Route::NodeIndex && value <= Route::NodeEnd {
             View::Node
         } else {
             View::Error
@@ -42,10 +42,10 @@ pub fn ui_main(
     reader: tokio::sync::RwLockReadGuard<Vec<String>>,
 ) {
     let chunks = util::vertical_chunks(vec![Constraint::Length(3), Constraint::Min(1)], f.size());
-    draw_header(f, chunks[0], state.id_cur_route as usize);
+    draw_header(f, chunks[0], state.cur_route as usize);
 
-    match state.id_cur_route.into() {
-        View::Pod => pod::draw(f, state, chunks[1], reader),
+    match state.cur_route.into() {
+        View::Pod => pod::draw_page_index(f, state, chunks[1], reader),
         View::Deploy => todo_fn(),
         View::Node => todo_fn(),
         View::Error => unreachable!(),
@@ -54,6 +54,7 @@ pub fn ui_main(
 fn todo_fn() {}
 
 fn draw_header(f: &mut Frame, area: Rect, tab_nr: usize) {
+    let tab_nr = tab_nr / Route::route_step() as usize;
     f.render_widget(util::titled_block(HEAD_TITLE), area);
 
     let chunks =
