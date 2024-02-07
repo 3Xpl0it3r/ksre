@@ -21,10 +21,12 @@ pub fn draw_page_pod_list(f: &mut Frame, area: Rect, state: &mut AppState) -> Op
     f.render_widget(input_widget, area[0]);
 
     // get selected items
-    let listitems = match state.input_char.len() {
+    
+    let listitems = uiutil::selectable_list(&state.cache_items);
+    /* let listitems = match state.input_char.len() {
         0 => uiutil::selectable_list(&state.cache_items),
         _ => uiutil::selectable_list_with_filter(&state.cache_items, || true),
-    };
+    }; */
 
     f.render_widget(listitems, area[1]);
 
