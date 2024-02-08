@@ -1,7 +1,6 @@
 use color_eyre::eyre::Result;
-use k8s_openapi::api::core::v1::{Pod, PodSpec, PodStatus};
-use kube::api::AttachParams;
-use kube::{Api, Client as KubeClient};
+use k8s_openapi::api::core::v1::{PodSpec, PodStatus};
+use kube::Client as KubeClient;
 use tokio::sync::broadcast;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
@@ -10,12 +9,8 @@ use tokio_util::sync::CancellationToken;
 use crate::event::KubeEvent;
 use crate::tui::Tui;
 
-use super::action::Mode;
-use super::keybind::{HandleFn, KeyContext, DEFAULT_ERROR_HANDLE};
+use super::keybind::{KeyContext, DEFAULT_ERROR_HANDLE};
 use super::ui::home::ui_main;
-use futures::StreamExt;
-use std::io::{stdout, Write};
-use tokio::io::AsyncWriteExt;
 
 use crate::app::job::{pod_exec, PodExecArgs};
 use crate::app::AppState;

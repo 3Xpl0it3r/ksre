@@ -39,23 +39,30 @@ pub async fn pod_exec(
     let attached_stdout = attached.stdout().unwrap();
     let attached_stdin = attached.stdin().unwrap();
 
-    let task_0 = tokio::spawn(async {
+    let writer = result_writer.clone();
+    let task_0 = tokio::spawn(async move {
         let mut input = input_reader;
         let mut stdin_writer = attached_stdin;
+        // if cmd is clear then don't send, only clear buffer
         while let Some(cmd) = input.recv().await {
-            stdin_writer.write_all(format!("{}\n", cmd).as_bytes()).await.unwrap();
+            if cmd.eq("clear") {
+                writer.write().await.clear();
+            } else {
+                stdin_writer
+                    .write_all(format!("{}\n", cmd).as_bytes())
+                    .await
+                    .unwrap();
+            }
         }
     });
 
-    let task1 = tokio::spawn(async {
+    let task1 = tokio::spawn(async move {
         let writer = result_writer;
         let mut stdout_stream = tokio_util::io::ReaderStream::new(attached_stdout);
         while let Some(next_output) = stdout_stream.next().await {
-            let stdout = String::from_utf8(next_output.unwrap().to_vec()).unwrap();
-            {
-                writer.write().await.push(stdout);
-            }
-            /* writer.send(stdout).await.expect("job-send failed"); */
+            let mut stdout = String::from_utf8(next_output.unwrap().to_vec()).unwrap();
+            trim_newline(&mut stdout);
+            writer.write().await.push(stdout);
         }
     });
     cancel.cancelled().await;
@@ -65,6 +72,12 @@ pub async fn pod_exec(
     }
     if !task_0.is_finished() {
         task_0.abort();
+    }
+}
+
+fn trim_newline(s: &mut String) {
+    if s.ends_with('\r') {
+        s.pop();
     }
 }
 

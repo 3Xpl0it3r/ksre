@@ -1,5 +1,5 @@
 use color_eyre::eyre::Result;
-use rsk8s_lib::*;
+use libksre::*;
 
 #[tokio::main]
 async fn main() -> Result<()> {

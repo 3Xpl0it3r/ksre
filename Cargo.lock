@@ -862,6 +862,21 @@ name = "ksre-agent"
 version = "0.1.0"
 
 [[package]]
+name = "ksre-tui"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "color-eyre",
+ "crossterm",
+ "futures",
+ "k8s-openapi",
+ "kube",
+ "ratatui",
+ "tokio",
+ "tokio-util",
+]
+
+[[package]]
 name = "kube"
 version = "0.88.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1356,21 +1371,6 @@ dependencies = [
  "spin",
  "untrusted",
  "windows-sys 0.48.0",
-]
-
-[[package]]
-name = "rsk8s-tui"
-version = "0.1.0"
-dependencies = [
- "clap",
- "color-eyre",
- "crossterm",
- "futures",
- "k8s-openapi",
- "kube",
- "ratatui",
- "tokio",
- "tokio-util",
 ]
 
 [[package]]

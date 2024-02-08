@@ -1,14 +1,10 @@
 use ratatui::Frame;
 
 use ratatui::layout::{Constraint, Rect};
-use ratatui::prelude::Alignment;
-use ratatui::style::{Style, Styled};
-use ratatui::text::Text;
-use ratatui::widgets::Paragraph;
 
-use crate::app::ui::util::{self as uituil, debug_widget, no_border_windows};
+use crate::app::ui::util::{self as uituil, no_border_windows};
 use crate::app::AppState;
-use crate::kubernetes::api::{ContainerFields, PodFields};
+use crate::kubernetes::api::PodFields;
 
 pub fn draw_page_pod_status(
     f: &mut Frame,
@@ -18,9 +14,7 @@ pub fn draw_page_pod_status(
 ) -> Option<PodFields> {
     let outer = uituil::outer_block(f, "Pod Status", area);
 
-    if pod_fields.is_none() {
-        return None;
-    }
+    pod_fields.as_ref()?;
 
     let pod_fields = pod_fields.unwrap();
 
@@ -65,11 +59,16 @@ pub fn draw_page_pod_status(
             keys.push("[✘] Restart:");
             value.push(cs.restart_count.as_str());
         }
-        keys.push("[✔] state:"); value.push(cs.state.as_str());
-        keys.push("[✔] exit_code");value.push(cs.exit_code.as_str());
-        keys.push("[✔] message:"); value.push(cs.message.as_str());
-        keys.push("[✔] reason:"); value.push(cs.reason.as_str());
-        keys.push("[✔] signal");value.push(cs.signal.as_str());
+        keys.push("[✔] state:");
+        value.push(cs.state.as_str());
+        keys.push("[✔] exit_code");
+        value.push(cs.exit_code.as_str());
+        keys.push("[✔] message:");
+        value.push(cs.message.as_str());
+        keys.push("[✔] reason:");
+        value.push(cs.reason.as_str());
+        keys.push("[✔] signal");
+        value.push(cs.signal.as_str());
 
         f.render_widget(no_border_windows(keys.join("\n").to_string()), cs_area[0]);
         f.render_widget(no_border_windows(value.join("\n").to_string()), cs_area[1]);

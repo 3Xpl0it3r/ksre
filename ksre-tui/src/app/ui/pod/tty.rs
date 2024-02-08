@@ -14,8 +14,17 @@ pub fn draw_page_pod_tty(
 ) {
     let outer = uiutil::outer_block(f, "Terminal", area);
 
-    let message = reader.join("\n").to_string();
+    if !state.input_char.is_empty(){
+        show_user_commnad(f, 0, outer.y, state.input_char.as_str());
+    }
 
+    let message = reader.join("\n").to_string();
     f.render_widget(debug_widget(message, " ".to_string()), outer);
 
+}
+
+fn show_user_commnad(f: &mut Frame, x: u16, y: u16, cmd: &str) {
+    let area = Rect::new(1, y - 4, 32, 3);
+    let txt = debug_widget(cmd.to_string(), "command".to_string());
+    f.render_widget(txt, area);
 }
