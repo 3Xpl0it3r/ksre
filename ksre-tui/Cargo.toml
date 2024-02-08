@@ -16,6 +16,7 @@ crossterm = { version = "0.27.0", features = ["event-stream"] }
 futures = "0.3.30"
 k8s-openapi = { version = "0.21.0", features = ["latest"] }
 kube = { version = "0.88.1", features = ["runtime", "derive", "kube-client", "ws"] }
+nucleo-matcher = "0.3.0"
 # ratatui = { version = "0.25.0", features = ["all-widgets"] }
 ratatui = { version = "0.26.0-alpha.3", features = ["all-widgets"] }
 tokio = { version = "1.35.1", features = ["full"] }

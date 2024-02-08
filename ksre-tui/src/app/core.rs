@@ -1,3 +1,6 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use color_eyre::eyre::Result;
 use k8s_openapi::api::core::v1::{PodSpec, PodStatus};
 use kube::Client as KubeClient;
@@ -25,6 +28,7 @@ pub struct App {
     task1: JoinHandle<()>,
     cancel_fn: CancellationToken,
     ready: bool,
+
 
     cmd_input_writer: Option<mpsc::Sender<String>>,
 }

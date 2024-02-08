@@ -84,7 +84,7 @@ pub const DEFAULT_POD_KEYBIND: KeyBindings = KeyBindings {
     c: DEFAULT_ERROR_HANDLE,
     d: DEFAULT_ERROR_HANDLE,
     e: DEFAULT_ERROR_HANDLE,
-    f: DEFAULT_ERROR_HANDLE,
+    f: KeyContext { route_id: Route::PodIndex, guard: Route::PodEnd, handler: None },
     g: DEFAULT_ERROR_HANDLE,
     h: DEFAULT_ERROR_HANDLE,
     j: KeyContext {

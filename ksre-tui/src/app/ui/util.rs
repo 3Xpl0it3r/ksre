@@ -1,6 +1,8 @@
 use std::rc::Rc;
 
 use k8s_openapi::api::core::v1::Pod;
+use nucleo_matcher::pattern::{Atom, AtomKind, CaseMatching, Normalization};
+use nucleo_matcher::Matcher;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Style, Stylize};
 use ratatui::widgets::{Block, BorderType, Borders, List, ListItem, Paragraph, Tabs};
@@ -92,9 +94,10 @@ pub(super) fn selectable_tabpages(values: Vec<&str>, id_selected: usize) -> Tabs
         .select(id_selected)
 }
 
-pub(super) fn selectable_list(stateful_list: &StatefulList) -> List {
+pub(super) fn selectable_list<'a>(stateful_list: &'a StatefulList) -> List<'a> {
     let mut list_items = Vec::new();
     let items = stateful_list.items.iter();
+
     let sub_items = &stateful_list.sub_items;
     for (idx, val) in items.enumerate() {
         if idx == stateful_list.index {
@@ -117,11 +120,30 @@ pub(super) fn selectable_list(stateful_list: &StatefulList) -> List {
     )
 }
 
-pub(super) fn selectable_list_with_filter<F: Fn() -> bool>(
-    sts_item: &StatefulList,
-    filter: F,
-) -> List<'_> {
-    List::<'_>::default().block(
+pub(super) fn selectable_list_with_filter<'a>(
+    stateful_list: &'a StatefulList,
+    input: &str,
+    matcher: &mut Matcher,
+) -> List<'a> {
+    let mut list_items = Vec::new();
+    let items = stateful_list.items.iter();
+    let filterd_items = Atom::new(
+        input,
+        CaseMatching::Ignore,
+        Normalization::Smart,
+        AtomKind::Fuzzy,
+        false,
+    )
+    .match_list(items, matcher)
+    .iter()
+    .map(|x| x.0)
+    .collect::<Vec<&String>>();
+
+    for (idx, val) in filterd_items.into_iter().enumerate() {
+        list_items.push(ListItem::new(val.as_str()).style(Style::default()));
+    }
+
+    List::new(list_items).block(
         Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded),
@@ -142,16 +164,17 @@ pub(super) fn no_border_windows(msg: String) -> Paragraph<'static> {
     let msg_wideget = Paragraph::new(msg).block(
         Block::default()
             .borders(Borders::NONE)
-            .border_type(BorderType::Rounded)
+            .border_type(BorderType::Rounded),
     );
     msg_wideget
 }
 
-pub(super) fn outer_block(f: &mut Frame,title: &str, area: Rect) -> Rect {
+pub(super) fn outer_block(f: &mut Frame, title: &str, area: Rect) -> Rect {
     let outer = Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
-        .style(Style::default()).title(title);
+        .style(Style::default())
+        .title(title);
     f.render_widget(outer, area);
     Rect::new(area.x + 1, area.y + 1, area.width - 1, area.height - 1)
 }

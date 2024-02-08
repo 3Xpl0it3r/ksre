@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use k8s_openapi::api::core::v1::{PodSpec, PodStatus};
+use nucleo_matcher::{Config, Matcher};
 use tokio_util::sync::CancellationToken;
 
 use crate::event::{self, CusKey, Event, KubeEvent};
@@ -42,14 +43,16 @@ pub struct Executor {
     pub run_fn: Option<HandleFn>,
     pub stop_fn: CancellationToken,
     state: bool,
+    pub prev_route: Route,
 }
 
 impl Executor {
-    fn new(hander: Option<HandleFn>, is_running: bool) -> Executor {
+    fn new(hander: Option<HandleFn>, is_running: bool, prev_route: Route) -> Executor {
         Executor {
             run_fn: hander,
             state: false,
             stop_fn: CancellationToken::new(),
+            prev_route: prev_route,
         }
     }
 }
@@ -57,6 +60,7 @@ impl Executor {
 pub struct AppState {
     pub cur_mode: Mode, //当前模式
     pub input_char: String,
+    pub fuzz_matcher: Matcher,
     pub reay: bool,
     // 当前选中的tab页面
     pub cur_route: Route,
@@ -85,6 +89,7 @@ impl Default for AppState {
                 sub_items: HashMap::new(),
             },
             input_char: String::new(),
+            fuzz_matcher: Matcher::new(Config::DEFAULT),
             reay: true,
             cur_route: Route::PodIndex,
             cur_pod: 0,
@@ -145,12 +150,16 @@ impl AppState {
                 CusKey::J => keybind.j,
                 CusKey::K => keybind.k,
                 CusKey::L => keybind.l, // show log
-                //
+                CusKey::F => {
+                    self.cur_route = Route::PodList;
+                    self.cur_mode = Mode::Insert;
+                    KEY_CONTEXT_RECONCILE
+                } // 检索podlist 赛选
                 CusKey::T => {
                     // 进入terminal 模式
+                    self.executor = Some(Executor::new(keybind.t.handler, false, self.cur_route));
                     self.cur_route = Route::PodTerm;
                     self.cur_mode = Mode::Insert;
-                    self.executor = Some(Executor::new(keybind.t.handler, false));
                     KEY_CONTEXT_RECONCILE
                 }
                 CusKey::Q => keybind.q,
@@ -189,8 +198,10 @@ impl AppState {
                                 if ctx.stop_fn.is_cancelled() {
                                     ctx.stop_fn.cancel();
                                 }
+                                self.cur_route = ctx.prev_route;
                                 self.executor.take();
                             }
+                            self.input_char.clear();
                             false
                         }
                         CusKey::Enter => {
@@ -265,9 +276,10 @@ impl AppState {
                 run_fn: None,
                 state: false,
                 stop_fn: CancellationToken::new(),
+                prev_route: Route::PodIndex,
             });
         }
         self.cur_mode = Mode::Insert;
-        Some(Executor::new(self.executor.as_ref().unwrap().run_fn, true))
+        Some(Executor::new(self.executor.as_ref().unwrap().run_fn, true, Route::PodIndex))
     }
 }

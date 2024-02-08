@@ -1,4 +1,6 @@
+use nucleo_matcher::pattern::{Atom, AtomKind, CaseMatching, Normalization};
 use ratatui::layout::{Constraint, Rect};
+use ratatui::widgets::List;
 use ratatui::Frame;
 
 use crate::app::action::{Mode, Route};
@@ -21,14 +23,22 @@ pub fn draw_page_pod_list(f: &mut Frame, area: Rect, state: &mut AppState) -> Op
     f.render_widget(input_widget, area[0]);
 
     // get selected items
-    
-    let listitems = uiutil::selectable_list(&state.cache_items);
+    if state.cur_route == Route::PodList && !state.input_char.is_empty() {
+        let listitems = uiutil::selectable_list_with_filter(
+            &state.cache_items,
+            state.input_char.as_str(),
+            &mut state.fuzz_matcher,
+        );
+        f.render_widget(listitems, area[1]);
+    } else {
+        let listitems = uiutil::selectable_list(&state.cache_items);
+        f.render_widget(listitems, area[1]);
+    }
+
     /* let listitems = match state.input_char.len() {
         0 => uiutil::selectable_list(&state.cache_items),
         _ => uiutil::selectable_list_with_filter(&state.cache_items, || true),
     }; */
-
-    f.render_widget(listitems, area[1]);
 
     // get podfields to render the following widgets
     let pod_name = state.cache_items.items.get(state.cache_items.index);
