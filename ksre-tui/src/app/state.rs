@@ -1,3 +1,4 @@
+use std::char;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -66,9 +67,43 @@ impl Executor {
     }
 }
 
+#[derive(Default)]
+pub struct UserInput {
+    buffer: String,
+    fixed: bool,
+}
+
+// UserInput[#TODO] (should add some comments)
+impl UserInput {
+    pub fn clear(&mut self) {
+        self.buffer.clear();
+        self.fixed = false;
+    }
+    pub fn is_empty(&self) -> bool {
+        self.buffer.is_empty()
+    }
+    fn pop(&mut self) {
+        self.buffer.pop();
+    }
+
+    fn push(&mut self, c: char) {
+        self.buffer.push(c);
+    }
+
+    pub fn as_str(&self) -> &str {
+        self.buffer.as_str()
+    }
+    fn done(&mut self) {
+        self.fixed = true;
+    }
+    pub fn clone(&mut self) -> String {
+        self.buffer.clone()
+    }
+}
+
 pub struct AppState {
     pub cur_mode: Mode, //当前模式
-    pub input_char: String,
+    pub user_input: UserInput,
     pub fuzz_matcher: Matcher,
     pub reay: bool,
     // 当前选中的tab页面
@@ -96,7 +131,7 @@ impl Default for AppState {
             cache_items: StatefulList::default(),
             namespace_items: StatefulList::default(),
             nodes_items: StatefulList::default(),
-            input_char: String::new(),
+            user_input: UserInput::default(),
             fuzz_matcher: Matcher::new(Config::DEFAULT),
             reay: true,
             cur_route: Route::PodIndex,
@@ -135,32 +170,39 @@ impl AppState {
 
 // AppState[#TODO] (should add some comments)
 impl AppState {
-    // 事件处理逻辑如下 ：w
-    // normal(triggerd)   -----> insert ----(esc) --> normal <-------------  (reloop, without consume esc key)
-    //                      /\      |                                      |
-    //                      |      -------------------insert -----(esc)---|
-    //                      |      |
-    //                      |      |________(enter)---command ----(esc)---> normal(reloop, without comsume esc key)
-    //                      |                            |
-    //                      |-----------------------------(command reabck to insert, should cleanr all buffer in userinput)
+
     pub fn handle_terminal_key_event(&mut self, event: Event) -> KeyContext {
         self.resync_cache_items();
         // 如果当前正在处于insert模式直接处理user insert
         let keybind = self.get_keybings();
 
+        if let Event::Key(CusKey::Esc) = event {
+            self.handle_esc_key();
+            return KEY_CONTEXT_RECONCILE;
+        }
+        if let Event::Key(CusKey::Enter) = event {
+            self.handle_enter_key();
+            return KEY_CONTEXT_RECONCILE;
+        }
+
+        if let Mode::Insert = self.cur_mode {
+            if let Event::Key(key) = event {
+                self.handle_user_input(key);
+            }
+            return KEY_CONTEXT_RECONCILE;
+        }
+
         match event {
             Event::Tick => keybind.tick,
             Event::Error => keybind.tick,
             Event::Key(key) => match key {
-                CusKey::Esc => {
-                    self.handle_esc_key();
-                    KEY_CONTEXT_RECONCILE
-                }
-                CusKey::Enter => {
-                    self.handle_enter_key();
-                    KEY_CONTEXT_RECONCILE
-                }
                 CusKey::Tab => keybind.tab,
+                CusKey::E => {
+                    self.cur_route = Route::PodList;
+                    self.cur_mode = Mode::Insert;
+                    self.user_input.clear();
+                    KEY_CONTEXT_RECONCILE
+                }
                 CusKey::N => {
                     self.cur_route = Route::PodNamespace;
                     self.namespace_items.fixed = false;
@@ -229,8 +271,8 @@ impl AppState {
         }
         // if currnet mode is insert mode, then empty input buffer;
         if let Mode::Insert = self.cur_mode {
-            if !self.input_char.is_empty() {
-                self.input_char.clear();
+            if !self.user_input.is_empty() {
+                self.user_input.clear();
             }
         }
         if !self.namespace_items.fixed {
@@ -251,6 +293,7 @@ impl AppState {
             }
             Mode::Insert => {
                 self.cur_mode = Mode::Normal;
+                self.user_input.done();
             }
             Mode::Command => {}
         }
@@ -261,27 +304,27 @@ impl AppState {
     fn handle_user_input(&mut self, key: CusKey) {
         match key {
             CusKey::Backspace => {
-                if !self.input_char.is_empty() {
-                    self.input_char.pop();
+                if !self.user_input.is_empty() {
+                    self.user_input.pop();
                 }
             }
-            CusKey::Enter => {
-                self.cur_mode = Mode::Command;
-            }
-            _ => self.input_char.push(key.char()),
+            _ => self.user_input.push(key.char()),
         }
     }
 
     fn resync_cache_items(&mut self) {
+        if self.user_input.fixed && self.cache_items.fixed{
+            return;
+        }
         let namesapce = self
             .namespace_items
             .items
             .get(self.namespace_items.index)
             .unwrap();
         let items = self.store_pods.all_keys(namesapce);
-        if self.cur_route as i32 == Route::PodList as i32 && !self.input_char.is_empty() {
+        if self.cur_route as i32 == Route::PodList as i32 && !self.user_input.is_empty() {
             let filter_items = Atom::new(
-                self.input_char.as_str(),
+                self.user_input.as_str(),
                 CaseMatching::Ignore,
                 Normalization::Smart,
                 AtomKind::Fuzzy,

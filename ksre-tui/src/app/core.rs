@@ -139,6 +139,12 @@ impl App {
 
     pub fn handle_pod_logs(&mut self, cancel: Option<CancellationToken>) {
         if self.ready {
+            if !self.task0.is_finished() {
+                self.task0.abort();
+            }
+            if !self.task1.is_finished() {
+                self.task1.abort();
+            }
             let namespace_pod = self.app_state.get_namespaced_pod();
             if namespace_pod.is_none() {
                 self.app_state.cancel_executor();
@@ -159,6 +165,10 @@ impl App {
             ));
             let writer = self.app_state.stdout_buffer_writer();
             self.task1 = tokio::spawn(async move {
+                {
+                    writer.write().await.select_all();
+                    writer.write().await.cut();
+                }
                 while let Some(line) = log_reader_rx.recv().await {
                     writer.write().await.insert_str(line.as_str());
                     writer.write().await.insert_newline();
@@ -183,11 +193,11 @@ impl App {
             self.task1 = tokio::spawn(pod_exec(cancel, writer, input_reader, pod_args));
         } else {
             let writer = self.cmd_input_writer.as_ref().unwrap().clone();
-            let input = self.app_state.input_char.clone();
+            let input = self.app_state.user_input.clone();
             tokio::spawn(async move {
                 writer.send(input).await.expect("send failed");
             });
-            self.app_state.input_char.clear();
+            self.app_state.user_input.clear();
         }
     }
 }

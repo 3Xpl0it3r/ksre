@@ -14,8 +14,8 @@ pub fn draw_page_pod_tty(
 ) {
     let outer = uiutil::outer_block(f, "Terminal", area);
 
-    if !state.input_char.is_empty(){
-        show_user_commnad(f, 0, outer.y, state.input_char.as_str());
+    if !state.user_input.is_empty(){
+        show_user_commnad(f, 0, outer.y, state.user_input.as_str());
     }
 
     let message = reader.join("\n").to_string();

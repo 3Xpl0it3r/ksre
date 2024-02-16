@@ -41,7 +41,7 @@ pub fn draw_page_pod_list(f: &mut Frame, area: Rect, state: &mut AppState) {
 
 fn draw_user_input(f: &mut Frame, area: Rect, state: &AppState) {
     let input_widget = if let Route::PodList = state.cur_route {
-        uiutil::user_input(state.input_char.as_str(), state.cur_mode)
+        uiutil::user_input(state.user_input.as_str(), state.cur_mode)
     } else {
         uiutil::user_input("", Mode::Normal)
     };

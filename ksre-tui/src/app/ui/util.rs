@@ -79,7 +79,7 @@ pub(super) fn user_input(input_char: &'_ str, input_mode: Mode) -> Paragraph {
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title("Input Your Command")
+                .title("Select pod, [e]:trigger [esc]:exit input")
                 .border_type(BorderType::Rounded),
         )
 }
