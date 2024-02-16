@@ -8,6 +8,7 @@ const ROUTE_STEP: isize = 100;
 pub enum Route {
     PodIndex = 0,
     // -----pod begin
+    PodNamespace,
     PodList,
     PodState,
     PodTerm,

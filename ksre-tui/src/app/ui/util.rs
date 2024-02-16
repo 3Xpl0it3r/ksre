@@ -1,16 +1,16 @@
 use std::rc::Rc;
 
-use k8s_openapi::api::core::v1::Pod;
-use nucleo_matcher::pattern::{Atom, AtomKind, CaseMatching, Normalization};
-use nucleo_matcher::Matcher;
+use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Style, Stylize};
-use ratatui::widgets::{Block, BorderType, Borders, List, ListItem, Paragraph, Tabs};
-use ratatui::Frame;
+use ratatui::text::Line;
+use ratatui::widgets::{Block, Borders, BorderType, List, ListItem, Paragraph, Tabs};
 
-use super::color;
 use crate::app::action::Mode;
 use crate::app::state::StatefulList;
+use crate::app::ui::theme;
+
+use super::theme::Kanagawa;
 
 pub(super) fn style_error() -> Style {
     Style::default().fg(Color::Red)
@@ -19,6 +19,7 @@ pub(super) fn style_error() -> Style {
 pub(super) fn style_warn() -> Style {
     Style::default().fg(Color::Yellow)
 }
+
 pub(super) fn style_info() -> Style {
     Style::default().fg(Color::Green)
 }
@@ -38,12 +39,12 @@ pub(super) fn vertical_chunks(constraits: Vec<Constraint>, size: Rect) -> Rc<[Re
 }
 
 pub(super) fn vertical_margined_chunks(
-    constraits: Vec<Constraint>,
+    constraints: Vec<Constraint>,
     size: Rect,
     margin: u16,
 ) -> Rc<[Rect]> {
     Layout::default()
-        .constraints(constraits)
+        .constraints(constraints)
         .direction(Direction::Vertical)
         .margin(margin)
         .split(size)
@@ -83,34 +84,33 @@ pub(super) fn user_input(input_char: &'_ str, input_mode: Mode) -> Paragraph {
         )
 }
 
-pub(super) fn selectable_tabpages(values: Vec<&str>, id_selected: usize) -> Tabs<'_> {
+pub(super) fn selected_tab(values: Vec<&str>, id_selected: usize) -> Tabs<'_> {
     Tabs::new(values)
         .block(
             Block::default()
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded),
         )
-        .highlight_style(Style::default().fg(Color::from_u32(color::Green)))
+        .highlight_style(
+            Style::default()
+                .fg(theme::DefaultTheme::BlueLight)
+                .bg(theme::DefaultTheme::YellowBoat),
+        )
         .select(id_selected)
+        .divider(" ")
+        .padding("", "")
 }
 
-pub(super) fn selectable_list<'a>(stateful_list: &'a StatefulList) -> List<'a> {
+pub(super) fn selectable_list_0<'a>(stateful_list: &'a StatefulList) -> List<'a> {
     let mut list_items = Vec::new();
     let items = stateful_list.items.iter();
 
-    let sub_items = &stateful_list.sub_items;
     for (idx, val) in items.enumerate() {
         if idx == stateful_list.index {
             list_items
-                .push(ListItem::new(val.as_str()).style(Style::default().fg(Color::LightYellow)));
+                .push(ListItem::new(val.as_ref()).style(Style::default().fg(Color::LightYellow)));
         } else {
-            list_items.push(ListItem::new(val.as_str()).style(Style::default()));
-        }
-        if sub_items.get(&idx).is_none() {
-            continue;
-        }
-        for sub_item in sub_items.get(&idx).unwrap().iter() {
-            list_items.push(ListItem::new(format!("    |-{}", sub_item)).style(Style::default()));
+            list_items.push(ListItem::new(val.as_ref()).style(Style::default()));
         }
     }
     List::new(list_items).block(
@@ -120,29 +120,21 @@ pub(super) fn selectable_list<'a>(stateful_list: &'a StatefulList) -> List<'a> {
     )
 }
 
-pub(super) fn selectable_list_with_filter<'a>(
-    stateful_list: &'a StatefulList,
-    input: &str,
-    matcher: &mut Matcher,
-) -> List<'a> {
+pub(super) fn selectable_list_with_mark(stateful_list: &StatefulList) -> List {
     let mut list_items = Vec::new();
     let items = stateful_list.items.iter();
-    let filterd_items = Atom::new(
-        input,
-        CaseMatching::Ignore,
-        Normalization::Smart,
-        AtomKind::Fuzzy,
-        false,
-    )
-    .match_list(items, matcher)
-    .iter()
-    .map(|x| x.0)
-    .collect::<Vec<&String>>();
 
-    for (idx, val) in filterd_items.into_iter().enumerate() {
-        list_items.push(ListItem::new(val.as_str()).style(Style::default()));
+    for (idx, val) in items.enumerate() {
+        if idx == stateful_list.index {
+            if stateful_list.fixed {
+                list_items.push(ListItem::new(Line::styled(format!("[✓] {}", val.as_ref()), Style::default())));
+            }else {
+                list_items.push(ListItem::new(Line::styled(format!("[*] {}", val.as_ref()), Style::default())));
+            }
+        } else {
+            list_items.push(ListItem::new(Line::styled(format!("[ ] {}", val.as_ref()), Style::default())));
+        }
     }
-
     List::new(list_items).block(
         Block::default()
             .borders(Borders::ALL)

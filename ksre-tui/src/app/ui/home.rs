@@ -4,13 +4,13 @@ use ratatui::layout::{Constraint, Rect};
 use ratatui::style::{Color, Style};
 use ratatui::widgets::Tabs;
 use ratatui::Frame;
+use tui_textarea::TextArea;
 
 use crate::app::action::Route;
 use crate::app::state::AppState;
 
-use super::color;
 use super::pod;
-use super::util;
+use crate::app::ui::util as uiutil;
 
 const HEAD_TITLE: &'_ str = "ksre - ksre tools";
 
@@ -39,11 +39,13 @@ impl From<Route> for View {
 pub fn ui_main(
     f: &mut Frame,
     state: &mut AppState,
-    reader: tokio::sync::RwLockReadGuard<Vec<String>>,
+    reader: tokio::sync::RwLockReadGuard<TextArea>,
 ) {
-    let chunks = util::vertical_chunks(vec![Constraint::Length(3), Constraint::Min(1)], f.size());
+    let chunks = uiutil::vertical_chunks(vec![Constraint::Length(3), Constraint::Min(1)], f.size());
+    // header  pods  nodes
     draw_header(f, chunks[0], state.cur_route as usize);
 
+    // pod index is default home page
     match state.cur_route.into() {
         View::Pod => pod::draw_page_index(f, state, chunks[1], reader),
         View::Deploy => todo_fn(),
@@ -55,13 +57,17 @@ fn todo_fn() {}
 
 fn draw_header(f: &mut Frame, area: Rect, tab_nr: usize) {
     let tab_nr = tab_nr / Route::route_step() as usize;
-    f.render_widget(util::titled_block(HEAD_TITLE), area);
+    f.render_widget(uiutil::titled_block(HEAD_TITLE), area);
 
-    let chunks =
+    let tabs = uiutil::selected_tab(vec!["Pods", "Deplooy", "Node"], tab_nr);
+
+    f.render_widget(tabs, area);
+
+    /* let chunks =
         util::horizontal_margined_chunks(vec![Constraint::Length(75), Constraint::Min(0)], area, 1);
     let tabs = Tabs::new(vec!["Workload <tab|0>", "Cluster <tab|1>", "Node <tab|2>"])
         .highlight_style(Style::default().fg(Color::from_u32(color::Green)))
         .select(tab_nr);
 
-    f.render_widget(tabs, chunks[0])
+    f.render_widget(tabs, chunks[0]) */
 }

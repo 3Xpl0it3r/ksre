@@ -1,110 +1,63 @@
+use std::ops::Deref;
 use std::rc::Rc;
 
-use k8s_openapi::api::core::v1::{
-    Container, ContainerState, ContainerStatus, PodSpec, PodStatus, Probe,
+use k8s_openapi::{
+    api::core::v1::{Container, ContainerState, ContainerStatus, PodSpec, PodStatus, Probe},
+    apimachinery::pkg::util::intstr::IntOrString,
 };
-use k8s_openapi::apimachinery::pkg::util::intstr::IntOrString;
+use kube::core::object::{HasSpec, HasStatus};
+use kube::{Resource, ResourceExt};
 
 use super::RtObject;
 
-#[derive(Clone)]
-pub struct PodFields {
-    pub service_account: String,
-    pub node_name: String,
-    pub containers: Vec<ContainerFields>,
-    pub container_status: Vec<ContainerStatusFields>,
+const DEFAULT_EMPTY_VALUE: &'_ str = "Not Set";
+
+#[derive(Clone, Copy)]
+pub struct PodFields<'rc> {
+    pub service_account: &'rc str,
+    pub node_name: &'rc str,
+    /* pub containers: Vec<ContainerFields>,
+    pub container_status: Vec<ContainerStatusFields>, */
 }
 
+// maybe rc<str> more converience or better  ,but &str more effective for &str cost 16bytes, rc<str> cost 32 bytes
 // From[#TODO] (should add some comments)
-impl From<Rc<RtObject<PodSpec, PodStatus>>> for PodFields {
-    fn from(value: Rc<RtObject<PodSpec, PodStatus>>) -> Self {
-        let spec = &value.0.spec;
-        let status = value
-            .0
-            .status
-            .as_ref()
-            .unwrap()
-            .container_statuses
-            .as_ref()
-            .unwrap();
-
-        let sa = match spec.service_account.as_ref() {
-            Some(sa) => sa.to_owned(),
-            None => "not found".to_owned(),
+impl<'rc> From<&'rc Rc<RtObject<PodSpec, PodStatus>>> for PodFields<'rc> {
+    fn from(value: &'rc Rc<RtObject<PodSpec, PodStatus>>) -> Self {
+        let sa = match value.0.spec.service_account.as_ref() {
+            Some(sa) => sa.as_str(),
+            None => DEFAULT_EMPTY_VALUE,
         };
-        let node_name = match spec.node_name.as_ref() {
-            Some(node) => node.to_owned(),
-            None => "not found".to_owned(),
-        };
+        let name = value.0.meta().name.as_ref().unwrap().as_str();
+        /* let name = value.0.meta().deref().name.as_deref().unwrap(); */
 
-        /* let a = status.container_statuses.as_ref().unwrap().iter().map(|x|x.into()).collect(); */
         PodFields {
             service_account: sa,
-            node_name,
-            containers: spec.containers.iter().map(|c| c.into()).collect(),
-            container_status: status.iter().map(|x| x.into()).collect(),
+            node_name: name,
+            /* containers: spec.containers.iter().map(|c| c.into()).collect(),
+            container_status: status.iter().map(|x| x.into()).collect(), */
         }
     }
 }
 
 #[derive(Clone)]
-pub struct ContainerFields {
-    pub name: String,
+pub struct ContainerFields<'a> {
+    pub name: &'a str,
     // format is {protol}://*:{port}/{path}
-    pub liveness_probe: Option<String>,
+    pub liveness_probe: &'a str,
     // format is {protol}://*:{port}/{path}
-    pub readness_probe: Option<String>,
-    pub cpu_limit: Option<String>,
-    pub cpu_request: Option<String>,
-    pub mem_limit: Option<String>,
-    pub mem_requrst: Option<String>,
-    pub image: String,
+    pub readness_probe: &'a str,
+    pub cpu_limit: &'a str,
+    pub cpu_request: &'a str,
+    pub mem_limit: &'a str,
+    pub mem_requrst: &'a str,
+    pub image: &'a str,
 }
 
-impl From<&Container> for ContainerFields {
+impl<'a> From<&'a Container> for ContainerFields<'a> {
+    // liveness_probe,readness_propbe, cpu_request, cpu_limit, mem_request, mem_limit, start_probe
     fn from(container: &Container) -> ContainerFields {
-        let probe_gather = |probe: &Probe| -> Option<String> {
-            if probe.grpc.is_some() {
-                let grpc = probe.grpc.as_ref().unwrap();
-                if let Some(service) = grpc.service.as_ref() {
-                    return Some(format!("grpc://*:{}/{}", grpc.port, service));
-                }
-                return Some(format!("grpc://*:{}", grpc.port));
-            }
-            if probe.http_get.is_some() {
-                let http_action = probe.http_get.as_ref().unwrap();
-                return Some(format!(
-                    "{}://{}:{}/{}",
-                    http_action.scheme.as_ref().unwrap_or(&"http".to_string()),
-                    http_action.host.as_ref().unwrap_or(&"*".to_string()),
-                    match &http_action.port {
-                        IntOrString::Int(int) => int.to_string(),
-                        IntOrString::String(string) => string.clone(),
-                    },
-                    http_action.path.as_ref().unwrap_or(&"".to_string())
-                ));
-            }
-
-            None
-        };
-        ContainerFields {
-            name: container.name.to_owned(),
-            image: container.image.as_ref().unwrap().to_owned(),
-            liveness_probe: if container.liveness_probe.is_some() {
-                probe_gather(container.liveness_probe.as_ref().unwrap())
-            } else {
-                None
-            },
-            readness_probe: if container.readiness_probe.is_some() {
-                probe_gather(container.readiness_probe.as_ref().unwrap())
-            } else {
-                None
-            },
-            cpu_limit: None,
-            cpu_request: None,
-            mem_limit: None,
-            mem_requrst: None,
-        }
+        todo!()
     }
 }
 
@@ -191,6 +144,8 @@ mod tests {
         pod.spec.as_mut().unwrap().service_account = Some(service_account.to_owned());
         pod
     }
+    use k8s_openapi::api::core::v1::Pod;
+
     use super::*;
     #[test]
     fn basics() {

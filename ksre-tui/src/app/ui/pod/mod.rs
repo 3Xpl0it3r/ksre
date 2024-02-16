@@ -3,8 +3,11 @@ mod list;
 mod status;
 mod spec;
 mod tty;
+mod resource;
+mod logs;
 
 
+pub(super) use logs::draw_pod_logs;
 pub(super) use status::draw_page_pod_status;
 pub(super) use tty::draw_page_pod_tty;
 pub(super) use spec::draw_page_pod_spec;

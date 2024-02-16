@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use super::api::RtObject;
 
-type Indices<P, U> = HashMap<String, HashMap<String, Rc<RtObject<P, U>>>>;
+type Indices<P, U> = HashMap<Rc<str>, HashMap<Rc<str>, Rc<RtObject<P, U>>>>;
 
 pub struct StoreIndex<P: Clone, U: Clone> {
     index: Indices<P, U>,
@@ -25,115 +25,92 @@ impl<P: Clone, U: Clone> StoreIndex<P, U> {
         }
     }
 
-    /* pub fn batch_add(&mut self, obj_list: Vec<RtObject<P, U>>) -> Result<()> {
-        for obj in obj_list {
-            self.add(obj).unwrap();
-        }
-        Ok(())
-    } */
-
     pub fn add(&mut self, obj: RtObject<P, U>) -> Result<()> {
         self.update(obj)
     }
 
     pub fn delete(&mut self, obj: RtObject<P, U>) -> Result<()> {
-        let namespace = if let Some(namesapce) = &obj.0.metadata.namespace {
-            namesapce.clone()
+        let namespace = if let Some(namespace) = obj.0.metadata.namespace.as_deref() {
+            Rc::<str>::from(namespace)
         } else {
-            "".to_string()
+            Rc::<str>::from("")
         };
-        if self.index.get(&namespace).is_none() {
-            self.index.remove(&namespace).unwrap();
+        if self.index.get(namespace.as_ref()).is_none() {
+            self.index.remove(namespace.as_ref());
             return Ok(());
         }
-
-        self.index
-            .get_mut(&namespace)
+        let obj = self
+            .index
+            .get_mut(namespace.as_ref())
             .unwrap()
-            .remove(&obj.0.metadata.name.unwrap());
+            .remove(obj.0.metadata.name.as_deref().unwrap());
+        if let Some(obj) = obj {
+            if let Ok(obj) = Rc::try_unwrap(obj) {
+                drop(obj);
+            }
+        }
         Ok(())
     }
     pub fn update(&mut self, obj: RtObject<P, U>) -> Result<()> {
-        let namespace = if let Some(namesapce) = &obj.0.metadata.namespace {
-            namesapce.clone()
+        let namespace: Rc<str> = if let Some(namespace) = obj.0.metadata.namespace.as_deref() {
+            Rc::from(namespace)
         } else {
-            "".to_string()
+            Rc::from("")
         };
-        let pod_name = format!(
-            "{}:{}",
-            obj.0.metadata.namespace.as_ref().unwrap(),
-            obj.0.metadata.name.as_ref().unwrap()
-        );
-        if self.index.get(&namespace).is_none() {
-            let store = HashMap::from([(pod_name, Rc::new(obj))]);
-            self.index.insert(namespace, store);
-            Ok(())
+        let name: Rc<str> = Rc::from(obj.0.metadata.name.as_deref().unwrap());
+        if let Some(store) = self.index.get_mut(namespace.as_ref()) {
+            store.insert(name, Rc::new(obj));
         } else {
-            let cache = self.index.get_mut(&namespace).unwrap();
-            cache.insert(pod_name, Rc::new(obj));
-            Ok(())
+            let store = HashMap::from([(name, Rc::new(obj))]);
+            self.index.insert(namespace, store);
         }
+        Ok(())
     }
 
-    pub fn all_keys(&self, namespace: &str) -> Option<Vec<String>> {
+    pub fn all_keys(&self, namespace: &str) -> Vec<Rc<str>> {
+        let mut result = Vec::<Rc<str>>::new();
         if namespace.eq("all") {
-            let mut result = Vec::<String>::new();
             for ns in self.index.keys() {
-                result.extend(self.index.get(ns).unwrap().keys().cloned());
+                if let Some(store) = self.index.get(ns) {
+                    result.extend(store.keys().cloned());
+                }
             }
-            Some(result)
-        } else if self.index.get(namespace).is_some() {
-            Some(
-                self.index
-                    .get(namespace)
-                    .unwrap()
-                    .keys()
-                    .cloned()
-                    .collect::<Vec<String>>(),
-            )
+        } else if let Some(store) = self.index.get(namespace) {
+            result.extend(store.keys().cloned());
+        }
+        result
+    }
+
+    pub fn all_values(&self, namespace: &str) -> Vec<Rc<RtObject<P, U>>> {
+        let mut result = Vec::<Rc<RtObject<P, U>>>::new();
+        if namespace.eq("all") {
+            for ns in self.index.keys() {
+                if let Some(store) = self.index.get(ns) {
+                    result.extend(store.values().cloned());
+                }
+            }
+        } else if let Some(store) = self.index.get(namespace) {
+            result.extend(store.values().cloned());
+        }
+        result
+    }
+
+    pub fn get_value(&self, ns: &str, key: &str) -> Option<Rc<RtObject<P, U>>> {
+        self.index.get(ns).as_ref()?;
+
+        let store = self.index.get(ns).unwrap();
+        if let Some(obj) = store.get(key) {
+            Some(obj.clone())
         } else {
             None
         }
     }
 
-    pub fn all_values(&self, ns: &str) -> Option<Vec<Rc<RtObject<P, U>>>> {
-        if ns.eq("all") {
-            let mut result = Vec::<Rc<RtObject<P, U>>>::new();
-            for ns in self.index.keys() {
-                result.extend(self.index.get(ns).unwrap().values().cloned());
-            }
-            Some(result)
-        } else {
-            Some(
-                self.index
-                    .get(ns)
-                    .unwrap()
-                    .values()
-                    .cloned()
-                    .collect::<Vec<Rc<RtObject<P, U>>>>(),
-            )
-        }
-    }
-
-    pub fn get_value(&self, key: &str) -> Option<Rc<RtObject<P, U>>> {
-        let ns_name = key
-            .split(':')
-            .map(|x| x.to_string())
-            .collect::<Vec<String>>();
-        let ns = ns_name.get(0).unwrap();
-        let store = self.index.get(ns);
-        if store.is_none() {
-            return None;
-        }
-        let store = store.unwrap();
-        let obj = store.get(key);
-        if obj.is_none() {
-            return None;
-        }
-
-        let obj = obj.unwrap();
-
-        let ret = obj.clone();
-        Some(ret)
+    pub fn namespaces(&mut self) -> Vec<Rc<str>> {
+        self.index
+            .keys()
+            .filter(|x| !x.as_ref().eq(""))
+            .map(|x| x.clone())
+            .collect::<Vec<Rc<str>>>()
     }
 }

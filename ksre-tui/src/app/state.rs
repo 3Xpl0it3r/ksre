@@ -1,9 +1,12 @@
 use std::collections::HashMap;
+use std::rc::Rc;
 use std::sync::Arc;
 
 use k8s_openapi::api::core::v1::{PodSpec, PodStatus};
+use nucleo_matcher::pattern::{Atom, AtomKind, CaseMatching, Normalization};
 use nucleo_matcher::{Config, Matcher};
 use tokio_util::sync::CancellationToken;
+use tui_textarea::TextArea;
 
 use crate::event::{self, CusKey, Event, KubeEvent};
 use crate::kubernetes::api::RtObject;
@@ -17,6 +20,9 @@ use super::keybind::{
 
 impl StatefulList {
     pub fn next(&mut self) {
+        if self.items.is_empty() {
+            return;
+        }
         if self.index == self.items.len() - 1 {
             self.index = 0;
         } else {
@@ -24,6 +30,9 @@ impl StatefulList {
         }
     }
     pub fn prev(&mut self) {
+        if self.items.is_empty() {
+            return;
+        }
         if self.index == 0 {
             self.index = self.items.len() - 1;
         } else {
@@ -32,11 +41,11 @@ impl StatefulList {
     }
 }
 
+#[derive(Default)]
 pub struct StatefulList {
-    pub items: Vec<String>,
+    pub items: Vec<Rc<str>>,
     pub index: usize,
-    pub refresh: bool,
-    pub sub_items: HashMap<usize, Vec<String>>,
+    pub fixed: bool,
 }
 
 pub struct Executor {
@@ -52,7 +61,7 @@ impl Executor {
             run_fn: hander,
             state: false,
             stop_fn: CancellationToken::new(),
-            prev_route: prev_route,
+            prev_route,
         }
     }
 }
@@ -72,8 +81,10 @@ pub struct AppState {
     pub store_pods: StoreIndex<PodSpec, PodStatus>,
     // ui list 缓存项目
     pub cache_items: StatefulList,
+    pub namespace_items: StatefulList,
+    pub nodes_items: StatefulList,
     // 用来存储临时任务的输出
-    pub stdout_buffer: Arc<tokio::sync::RwLock<Vec<String>>>,
+    pub stdout_buffer: Arc<tokio::sync::RwLock<TextArea<'static>>>,
     // 记录触发command模式的handler,用于下一次继续触发command
     pub executor: Option<Executor>,
 }
@@ -82,12 +93,9 @@ impl Default for AppState {
     fn default() -> Self {
         AppState {
             cur_mode: Mode::Normal,
-            cache_items: StatefulList {
-                items: Vec::new(),
-                index: 0,
-                refresh: true,
-                sub_items: HashMap::new(),
-            },
+            cache_items: StatefulList::default(),
+            namespace_items: StatefulList::default(),
+            nodes_items: StatefulList::default(),
             input_char: String::new(),
             fuzz_matcher: Matcher::new(Config::DEFAULT),
             reay: true,
@@ -95,7 +103,7 @@ impl Default for AppState {
             cur_pod: 0,
             cur_node: 0,
             store_pods: StoreIndex::new(),
-            stdout_buffer: Arc::new(tokio::sync::RwLock::new(Vec::new())),
+            stdout_buffer: Arc::new(tokio::sync::RwLock::new(TextArea::default())),
             executor: None,
         }
     }
@@ -120,7 +128,7 @@ impl AppState {
     }
 
     fn on_add(&mut self, obj: &RtObject<PodSpec, PodStatus>) {
-        self.cache_items.items.push(obj.resource_name());
+        /* self.cache_items.items.push(obj.resource_name()); */
     }
     fn on_del(&mut self, obj: &RtObject<PodSpec, PodStatus>) {}
 }
@@ -136,9 +144,7 @@ impl AppState {
     //                      |                            |
     //                      |-----------------------------(command reabck to insert, should cleanr all buffer in userinput)
     pub fn handle_terminal_key_event(&mut self, event: Event) -> KeyContext {
-        if !self.sync_mode_with_continue(event) {
-            return KEY_CONTEXT_RECONCILE;
-        }
+        self.resync_cache_items();
         // 如果当前正在处于insert模式直接处理user insert
         let keybind = self.get_keybings();
 
@@ -146,10 +152,27 @@ impl AppState {
             Event::Tick => keybind.tick,
             Event::Error => keybind.tick,
             Event::Key(key) => match key {
+                CusKey::Esc => {
+                    self.handle_esc_key();
+                    KEY_CONTEXT_RECONCILE
+                }
+                CusKey::Enter => {
+                    self.handle_enter_key();
+                    KEY_CONTEXT_RECONCILE
+                }
                 CusKey::Tab => keybind.tab,
+                CusKey::N => {
+                    self.cur_route = Route::PodNamespace;
+                    self.namespace_items.fixed = false;
+                    KEY_CONTEXT_RECONCILE
+                }
                 CusKey::J => keybind.j,
                 CusKey::K => keybind.k,
-                CusKey::L => keybind.l, // show log
+                CusKey::L => {
+                    self.executor = Some(Executor::new(keybind.l.handler, false, self.cur_route));
+                    self.cur_route = Route::PodLog;
+                    KEY_CONTEXT_RECONCILE
+                } // show log
                 CusKey::F => {
                     self.cur_route = Route::PodList;
                     self.cur_mode = Mode::Insert;
@@ -163,6 +186,13 @@ impl AppState {
                     KEY_CONTEXT_RECONCILE
                 }
                 CusKey::Q => keybind.q,
+                CusKey::Enter => {
+                    if let Route::PodNamespace = self.cur_route {
+                        self.namespace_items.fixed = true;
+                        self.cur_route = Route::PodIndex;
+                    }
+                    KEY_CONTEXT_RECONCILE
+                }
                 _ => keybind.tick,
             },
         }
@@ -182,61 +212,53 @@ impl AppState {
         DEFAULT_NOP_KEYBINDS
     }
 
-    //模式切换 | ---esc-> continue
-    //         |
-    // true: current is normal,continue
-    // false, comsume esc key, reloop keyevent if current mode is insert or command
-    fn sync_mode_with_continue(&mut self, event: Event) -> bool {
-        match self.cur_mode {
-            Mode::Normal => true,
-            Mode::Insert => {
-                if let Event::Key(key) = event {
-                    match key {
-                        CusKey::Esc => {
-                            self.cur_mode = Mode::Normal;
-                            if let Some(ref ctx) = self.executor {
-                                if ctx.stop_fn.is_cancelled() {
-                                    ctx.stop_fn.cancel();
-                                }
-                                self.cur_route = ctx.prev_route;
-                                self.executor.take();
-                            }
-                            self.input_char.clear();
-                            false
-                        }
-                        CusKey::Enter => {
-                            self.cur_mode = Mode::Command;
-                            false
-                        }
-                        _ => {
-                            self.consume_user_input(key);
-                            false
-                        }
-                    }
-                } else {
-                    false
-                }
-            }
-            Mode::Command => {
-                if let Event::Key(key) = event {
-                    if let CusKey::Esc = key {
-                        self.cur_mode = Mode::Normal;
-                        if let Some(ref ctx) = self.executor {
-                            if ctx.stop_fn.is_cancelled() {
-                                ctx.stop_fn.cancel();
-                            }
-                            self.executor.take();
-                        }
-                    }
-                    false
-                } else {
-                    false
-                }
-            }
+    fn route_reset(&mut self) {
+        match self.cur_route {
+            m if m < Route::PodEnd => self.cur_route = Route::PodIndex,
+            m if m < Route::DeployEnd => self.cur_route = Route::DeployIndex,
+            m if m < Route::NodeEnd => self.cur_route = Route::PodIndex,
+            _ => self.cur_route = Route::PodIndex,
         }
     }
 
-    fn consume_user_input(&mut self, key: CusKey) {
+    // esc key handler
+    fn handle_esc_key(&mut self) {
+        self.route_reset();
+        if let Some(executor) = self.executor.take() {
+            executor.stop_fn.cancel();
+        }
+        // if currnet mode is insert mode, then empty input buffer;
+        if let Mode::Insert = self.cur_mode {
+            if !self.input_char.is_empty() {
+                self.input_char.clear();
+            }
+        }
+        if !self.namespace_items.fixed {
+            self.namespace_items.fixed = true;
+        }
+        // in esc mode, all mode will convert to normal mode
+        self.cur_mode = Mode::Normal;
+    }
+
+    fn handle_enter_key(&mut self) {
+        match self.cur_mode {
+            // normal模式下enter键1. select,
+            Mode::Normal => {
+                if !self.namespace_items.fixed {
+                    self.route_reset();
+                    self.namespace_items.fixed = true;
+                }
+            }
+            Mode::Insert => {
+                self.cur_mode = Mode::Normal;
+            }
+            Mode::Command => {}
+        }
+        // insert模式下 ,只需要处理inputchar
+        // command模式下,只需要处理command
+    }
+
+    fn handle_user_input(&mut self, key: CusKey) {
         match key {
             CusKey::Backspace => {
                 if !self.input_char.is_empty() {
@@ -250,11 +272,37 @@ impl AppState {
         }
     }
 
-    pub fn stdout_buffer_reader(&self) -> Arc<tokio::sync::RwLock<Vec<String>>> {
+    fn resync_cache_items(&mut self) {
+        let namesapce = self
+            .namespace_items
+            .items
+            .get(self.namespace_items.index)
+            .unwrap();
+        let items = self.store_pods.all_keys(namesapce);
+        if self.cur_route as i32 == Route::PodList as i32 && !self.input_char.is_empty() {
+            let filter_items = Atom::new(
+                self.input_char.as_str(),
+                CaseMatching::Ignore,
+                Normalization::Smart,
+                AtomKind::Fuzzy,
+                false,
+            )
+            .match_list(items, &mut self.fuzz_matcher)
+            .into_iter()
+            .map(|x| x.0)
+            .collect::<Vec<Rc<str>>>();
+            self.cache_items.items = filter_items;
+            self.cache_items.index = 0;
+        } else {
+            self.cache_items.items = items;
+        }
+    }
+
+    pub fn stdout_buffer_reader(&self) -> Arc<tokio::sync::RwLock<TextArea<'static>>> {
         self.stdout_buffer.clone()
     }
 
-    pub fn stdout_buffer_writer(&self) -> Arc<tokio::sync::RwLock<Vec<String>>> {
+    pub fn stdout_buffer_writer(&self) -> Arc<tokio::sync::RwLock<TextArea<'static>>> {
         { /* self.stdout_buffer.try_write().unwrap().clear(); */ }
         self.stdout_buffer.clone()
     }
@@ -263,23 +311,23 @@ impl AppState {
     }
 
     // normal 模式下self.command_ctx是None
-    pub fn consume_command_task(&mut self) -> Option<Executor> {
+    pub fn consume_command_task(&self) -> Option<&Executor> {
         self.executor.as_ref()?;
+        return self.executor.as_ref();
+    }
 
-        if let Mode::Normal = self.cur_mode {
-            return None;
+    pub fn get_namespaced_pod(&self) -> Option<(&str, &str)> {
+        let namespace = self.namespace_items.items.get(self.namespace_items.index);
+        if let Some(pod) = self.cache_items.items.get(self.cache_items.index) {
+            Some((namespace.as_ref().unwrap(), pod.as_ref()))
+        } else {
+            None
         }
-        // 如果是insert
-        // 模式直接不做任何处理，同时也拒绝任何handler，直接reconcile重新渲染图形就可以
-        if let Mode::Insert = self.cur_mode {
-            return Some(Executor {
-                run_fn: None,
-                state: false,
-                stop_fn: CancellationToken::new(),
-                prev_route: Route::PodIndex,
-            });
+    }
+
+    pub fn cancel_executor(&mut self) {
+        if let Some(executor) = self.executor.take() {
+            executor.stop_fn.cancel();
         }
-        self.cur_mode = Mode::Insert;
-        Some(Executor::new(self.executor.as_ref().unwrap().run_fn, true, Route::PodIndex))
     }
 }

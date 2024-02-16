@@ -6,6 +6,7 @@ use kube::api::AttachParams;
 use kube::{Api, Client};
 use tokio::{io::AsyncWriteExt, sync::mpsc};
 use tokio_util::sync::CancellationToken;
+use tui_textarea::TextArea;
 
 pub struct PodExecArgs {
     pub kube_client: Client,
@@ -16,7 +17,7 @@ pub struct PodExecArgs {
 
 pub async fn pod_exec(
     cancel: CancellationToken,
-    result_writer: Arc<tokio::sync::RwLock<Vec<String>>>,
+    result_writer: Arc<tokio::sync::RwLock<TextArea<'static>>>,
     input_reader: mpsc::Receiver<String>,
     request: PodExecArgs,
 ) {
@@ -46,12 +47,13 @@ pub async fn pod_exec(
         // if cmd is clear then don't send, only clear buffer
         while let Some(cmd) = input.recv().await {
             if cmd.eq("clear") {
-                writer.write().await.clear();
-            } else {
-                stdin_writer
-                    .write_all(format!("{}\n", cmd).as_bytes())
-                    .await
-                    .unwrap();
+                /* writer.write().await.clear(); */
+            } else if stdin_writer
+                .write_all(format!("{}\n", cmd).as_bytes())
+                .await
+                .is_err()
+            {
+                break;
             }
         }
     });
@@ -62,7 +64,7 @@ pub async fn pod_exec(
         while let Some(next_output) = stdout_stream.next().await {
             let mut stdout = String::from_utf8(next_output.unwrap().to_vec()).unwrap();
             trim_newline(&mut stdout);
-            writer.write().await.push(stdout);
+            writer.write().await.insert_str(&stdout);
         }
     });
     cancel.cancelled().await;
