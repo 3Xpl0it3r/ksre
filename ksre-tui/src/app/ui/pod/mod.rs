@@ -7,6 +7,7 @@ mod resource;
 mod logs;
 
 
+pub(super) use resource::draw_pod_resource;
 pub(super) use logs::draw_pod_logs;
 pub(super) use status::draw_page_pod_status;
 pub(super) use tty::draw_page_pod_tty;

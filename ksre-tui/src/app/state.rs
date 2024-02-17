@@ -9,7 +9,7 @@ use nucleo_matcher::{Config, Matcher};
 use tokio_util::sync::CancellationToken;
 use tui_textarea::TextArea;
 
-use crate::event::{self, CusKey, Event, KubeEvent};
+use crate::event::{CusKey, Event, KubeEvent};
 use crate::kubernetes::api::RtObject;
 use crate::kubernetes::indexer::StoreIndex;
 
@@ -96,7 +96,7 @@ impl UserInput {
     fn done(&mut self) {
         self.fixed = true;
     }
-    pub fn clone(&mut self) -> String {
+    pub fn clone(&self) -> String {
         self.buffer.clone()
     }
 }
@@ -170,7 +170,6 @@ impl AppState {
 
 // AppState[#TODO] (should add some comments)
 impl AppState {
-
     pub fn handle_terminal_key_event(&mut self, event: Event) -> KeyContext {
         self.resync_cache_items();
         // 如果当前正在处于insert模式直接处理user insert
@@ -206,6 +205,7 @@ impl AppState {
                 CusKey::N => {
                     self.cur_route = Route::PodNamespace;
                     self.namespace_items.fixed = false;
+                    self.user_input.clear();
                     KEY_CONTEXT_RECONCILE
                 }
                 CusKey::J => keybind.j,
@@ -267,13 +267,16 @@ impl AppState {
     fn handle_esc_key(&mut self) {
         self.route_reset();
         if let Some(executor) = self.executor.take() {
+            if self.cur_route == Route::PodLog {
+                self.cur_route = Route::PodIndex;
+            }
             executor.stop_fn.cancel();
         }
-        // if currnet mode is insert mode, then empty input buffer;
-        if let Mode::Insert = self.cur_mode {
-            if !self.user_input.is_empty() {
-                self.user_input.clear();
+        match self.cur_route {
+            d if d >= Route::PodIndex && d <= Route::PodEnd && d != Route::PodLog => {
+                self.user_input.clear()
             }
+            _ => {}
         }
         if !self.namespace_items.fixed {
             self.namespace_items.fixed = true;
@@ -313,7 +316,7 @@ impl AppState {
     }
 
     fn resync_cache_items(&mut self) {
-        if self.user_input.fixed && self.cache_items.fixed{
+        if self.user_input.fixed && !self.user_input.is_empty() {
             return;
         }
         let namesapce = self
