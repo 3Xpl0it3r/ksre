@@ -63,7 +63,9 @@ pub fn draw_page_index(
             let pod_describe = Some(PodDescribe::from(obj.as_ref().unwrap()));
 
             match state.cur_route {
-                Route::PodLog => draw_pod_logs(f, state, pod_describe.as_ref(), devops_chunk, reader),
+                Route::PodLog => {
+                    draw_pod_logs(f, state, pod_describe.as_ref(), devops_chunk, reader)
+                }
                 Route::PodTerm => {}
                 _ => draw_page_pod_status(f, state, pod_describe.as_ref(), devops_chunk),
             }

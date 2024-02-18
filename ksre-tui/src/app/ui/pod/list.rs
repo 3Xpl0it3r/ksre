@@ -7,7 +7,7 @@ use crate::app::action::{Mode, Route};
 use crate::app::state::AppState;
 use crate::kubernetes::api::PodDescribe;
 
-use crate::app::ui::util::{self as uiutil, debug_widget};
+use crate::app::ui::util::{self as uiutil, debug_widget, horizontal_chunks, debug_widget1};
 
 // filter <e toggle>
 // namespace<n toggle> | nodename<N toogle> |
@@ -49,9 +49,19 @@ fn draw_user_input(f: &mut Frame, area: Rect, state: &AppState) {
 }
 
 fn ui_select_namespace(f: &mut Frame, area: Rect, state: &AppState) {
+    let area = horizontal_chunks(vec![Constraint::Percentage(70), Constraint::Percentage(30)], area);
+
     let list = uiutil::selectable_list_with_mark(&state.namespace_items);
 
-    f.render_widget(list, area);
+    let help_message = r#"[n]     trigger
+[k]     up 
+[j]     down
+[enter] comfirm
+[esc]   quit
+"#;
+
+    f.render_widget(list, area[0]);
+    f.render_widget(debug_widget1(help_message.to_string()), area[1]);
 }
 
 
