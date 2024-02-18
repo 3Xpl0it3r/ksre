@@ -1,10 +1,11 @@
 use std::rc::Rc;
 
-use ratatui::Frame;
+use color_eyre::owo_colors::OwoColorize;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
-use ratatui::style::{Color, Style, Stylize};
+use ratatui::style::{Color, Style, Styled, Stylize};
 use ratatui::text::Line;
-use ratatui::widgets::{Block, Borders, BorderType, List, ListItem, Paragraph, Tabs};
+use ratatui::widgets::{Block, BorderType, Borders, List, ListItem, Paragraph, Tabs};
+use ratatui::Frame;
 
 use crate::app::action::Mode;
 use crate::app::state::StatefulList;
@@ -85,7 +86,11 @@ pub(super) fn user_input(input_char: &'_ str, input_mode: Mode) -> Paragraph {
 }
 
 pub(super) fn selected_tab(values: Vec<&str>, id_selected: usize) -> Tabs<'_> {
-    Tabs::new(values)
+    let colored_items = values
+        .iter()
+        .map(|x| x.to_string().bg(theme::DefaultTheme::Sumlink1).into())
+        .collect::<Vec<Line>>();
+    Tabs::new(colored_items)
         .block(
             Block::default()
                 .borders(Borders::ALL)
@@ -93,22 +98,22 @@ pub(super) fn selected_tab(values: Vec<&str>, id_selected: usize) -> Tabs<'_> {
         )
         .highlight_style(
             Style::default()
-                .fg(theme::DefaultTheme::BlueLight)
-                .bg(theme::DefaultTheme::YellowBoat),
+                .fg(theme::DefaultTheme::OrangeSurimi)
+                .bg(theme::DefaultTheme::Sumlink1),
         )
         .select(id_selected)
         .divider(" ")
-        .padding("", "")
+        .padding(" ", "")
 }
 
-pub(super) fn selectable_list_0<'a>(stateful_list: &'a StatefulList) -> List<'a> {
+pub(super) fn selectable_list_0(stateful_list: &StatefulList) -> List {
     let mut list_items = Vec::new();
     let items = stateful_list.items.iter();
 
     for (idx, val) in items.enumerate() {
         if idx == stateful_list.index {
             list_items
-                .push(ListItem::new(val.as_ref()).style(Style::default().fg(Color::LightYellow)));
+                .push(ListItem::new(val.as_ref()).style(Style::default().fg(theme::DefaultTheme::BlueSpring).bg(theme::DefaultTheme::Sumlink1)));
         } else {
             list_items.push(ListItem::new(val.as_ref()).style(Style::default()));
         }
@@ -127,12 +132,21 @@ pub(super) fn selectable_list_with_mark(stateful_list: &StatefulList) -> List {
     for (idx, val) in items.enumerate() {
         if idx == stateful_list.index {
             if stateful_list.fixed {
-                list_items.push(ListItem::new(Line::styled(format!("[✓] {}", val.as_ref()), Style::default())));
-            }else {
-                list_items.push(ListItem::new(Line::styled(format!("[*] {}", val.as_ref()), Style::default())));
+                list_items.push(ListItem::new(Line::styled(
+                    format!("[✓] {}", val.as_ref()),
+                    Style::default(),
+                )));
+            } else {
+                list_items.push(ListItem::new(Line::styled(
+                    format!("[*] {}", val.as_ref()),
+                    Style::default(),
+                )));
             }
         } else {
-            list_items.push(ListItem::new(Line::styled(format!("[ ] {}", val.as_ref()), Style::default())));
+            list_items.push(ListItem::new(Line::styled(
+                format!("[ ] {}", val.as_ref()),
+                Style::default(),
+            )));
         }
     }
     List::new(list_items).block(
@@ -146,11 +160,10 @@ pub(super) fn debug_widget(msg: &str) -> Paragraph {
     let msg_wideget = Paragraph::new(msg).block(
         Block::default()
             .borders(Borders::ALL)
-            .border_type(BorderType::Rounded)
+            .border_type(BorderType::Rounded),
     );
     msg_wideget
 }
-
 
 pub(super) fn outer_block(f: &mut Frame, title: &str, area: Rect) -> Rect {
     let outer = Block::default()

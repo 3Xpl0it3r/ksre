@@ -59,7 +59,7 @@ fn draw_header(f: &mut Frame, area: Rect, tab_nr: usize) {
     let tab_nr = tab_nr / Route::route_step() as usize;
     f.render_widget(uiutil::titled_block(HEAD_TITLE), area);
 
-    let tabs = uiutil::selected_tab(vec!["Pods", "Deplooy", "Node"], tab_nr);
+    let tabs = uiutil::selected_tab(vec!["[ pods ]", "[ deployment ]", "[ nodes ]"], tab_nr);
 
     f.render_widget(tabs, area);
 

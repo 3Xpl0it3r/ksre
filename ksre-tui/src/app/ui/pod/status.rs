@@ -15,6 +15,7 @@ pub fn draw_page_pod_status(
     area: Rect,
 ) {
     if pod_describe.is_none() {
+        f.render_widget(debug_widget("Empty"), area);
         return;
     }
     let pod_describe = pod_describe.unwrap();
