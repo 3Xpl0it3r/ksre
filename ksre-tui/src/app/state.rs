@@ -1,5 +1,4 @@
 use std::char;
-use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -364,11 +363,10 @@ impl AppState {
 
     pub fn get_namespaced_pod(&self) -> Option<(&str, &str)> {
         let namespace = self.namespace_items.items.get(self.namespace_items.index);
-        if let Some(pod) = self.cache_items.items.get(self.cache_items.index) {
-            Some((namespace.as_ref().unwrap(), pod.as_ref()))
-        } else {
-            None
-        }
+        self.cache_items
+            .items
+            .get(self.cache_items.index)
+            .map(|pod| (namespace.as_ref().unwrap() as &str, pod.as_ref()))
     }
 
     pub fn cancel_executor(&mut self) {

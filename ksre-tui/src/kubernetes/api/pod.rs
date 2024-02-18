@@ -1,157 +1,214 @@
-use std::ops::Deref;
+use std::collections::{BTreeMap, HashMap};
 use std::rc::Rc;
 
-use k8s_openapi::{
-    api::core::v1::{Container, ContainerState, ContainerStatus, PodSpec, PodStatus, Probe},
-    apimachinery::pkg::util::intstr::IntOrString,
+use k8s_openapi::api::core::v1::{ContainerState, PodSpec, PodStatus};
+use kube::{
+    core::object::{HasSpec, HasStatus},
+    Resource,
 };
-use kube::core::object::{HasSpec, HasStatus};
-use kube::{Resource, ResourceExt};
 
-use super::RtObject;
+use crate::kubernetes::api::runtime::RtObject;
 
-const DEFAULT_EMPTY_VALUE: &'_ str = "Not Set";
+const NIL_STR: &'_ str = "<none>";
 
-#[derive(Clone, Copy)]
-pub struct PodFields<'rc> {
+pub struct PodDescribe<'rc> {
+    pub name: &'rc str,
+    pub namespace: &'rc str,
+    pub priority: i32,
     pub service_account: &'rc str,
-    pub node_name: &'rc str,
-    /* pub containers: Vec<ContainerFields>,
-    pub container_status: Vec<ContainerStatusFields>, */
-}
-
-// maybe rc<str> more converience or better  ,but &str more effective for &str cost 16bytes, rc<str> cost 32 bytes
-// From[#TODO] (should add some comments)
-impl<'rc> From<&'rc Rc<RtObject<PodSpec, PodStatus>>> for PodFields<'rc> {
-    fn from(value: &'rc Rc<RtObject<PodSpec, PodStatus>>) -> Self {
-        let sa = match value.0.spec.service_account.as_ref() {
-            Some(sa) => sa.as_str(),
-            None => DEFAULT_EMPTY_VALUE,
-        };
-        let name = value.0.meta().name.as_ref().unwrap().as_str();
-        /* let name = value.0.meta().deref().name.as_deref().unwrap(); */
-
-        PodFields {
-            service_account: sa,
-            node_name: name,
-            /* containers: spec.containers.iter().map(|c| c.into()).collect(),
-            container_status: status.iter().map(|x| x.into()).collect(), */
-        }
-    }
-}
-
-#[derive(Clone)]
-pub struct ContainerFields<'a> {
-    pub name: &'a str,
-    // format is {protol}://*:{port}/{path}
-    pub liveness_probe: &'a str,
-    // format is {protol}://*:{port}/{path}
-    pub readness_probe: &'a str,
-    pub cpu_limit: &'a str,
-    pub cpu_request: &'a str,
-    pub mem_limit: &'a str,
-    pub mem_requrst: &'a str,
-    pub image: &'a str,
-}
-
-impl<'a> From<&'a Container> for ContainerFields<'a> {
-    // liveness_probe,readness_propbe, cpu_request, cpu_limit, mem_request, mem_limit, start_probe
-    fn from(container: &Container) -> ContainerFields {
-        todo!()
-    }
-}
-
-#[derive(Clone)]
-pub struct ContainerStatusFields {
-    pub name: String,
-    pub ready: bool,
-    pub restart_count: String,
-    pub state: String,
-    pub exit_code: String,
-    pub message: String,
-    pub reason: String,
-    pub signal: String,
-}
-
-// From<&ContainerStatus>[#TODO] (should add some comments)
-impl From<&ContainerStatus> for ContainerStatusFields {
-    fn from(value: &ContainerStatus) -> Self {
-        let c_state = value.state.as_ref().unwrap();
-        let state_fields: ContainerStateFields = c_state.into();
-        ContainerStatusFields {
-            name: value.name.to_string(),
-            ready: value.ready,
-            restart_count: value.restart_count.to_string(),
-            state: state_fields.state.to_string(),
-            exit_code: state_fields.exit_code.unwrap_or(0).to_string(),
-            message: state_fields.message.unwrap_or("".to_string()).to_string(),
-            reason: state_fields.reason.unwrap_or("".to_string()).to_string(),
-            signal: state_fields.signal.unwrap_or(0).to_string(),
-        }
-    }
-}
-
-struct ContainerStateFields {
-    state: String,
-    exit_code: Option<i32>,
-    message: Option<String>,
-    reason: Option<String>,
-    signal: Option<i32>,
+    pub labels: String,
+    pub node: &'rc str,
+    pub start_time: String,
+    pub status: &'rc str,
+    pub ip: &'rc str,
+    pub ips: Vec<&'rc str>,
+    pub qos_class: &'rc str,
+    pub node_selector: String,
+    pub containers: Vec<PodDescContainer<'rc>>,
+    pub conditions: HashMap<&'rc str, &'rc str>,
 }
 
 // From[#TODO] (should add some comments)
-impl From<&ContainerState> for ContainerStateFields {
-    fn from(container_state: &ContainerState) -> Self {
-        if container_state.running.is_some() {
-            ContainerStateFields {
-                state: "running".to_string(),
-                exit_code: None,
-                message: None,
-                reason: None,
-                signal: None,
-            }
-        } else if container_state.terminated.is_some() {
-            let ref_terminated = container_state.terminated.as_ref().unwrap();
-            ContainerStateFields {
-                state: "terminated".to_string(),
-                exit_code: Some(ref_terminated.exit_code),
-                message: ref_terminated.message.clone(),
-                reason: ref_terminated.reason.clone(),
-                signal: ref_terminated.signal,
+impl<'rc> From<&'rc Rc<RtObject<PodSpec, PodStatus>>> for PodDescribe<'rc> {
+    fn from(object: &'rc Rc<RtObject<PodSpec, PodStatus>>) -> Self {
+        let pod_metadata = object.0.meta();
+        let pod_spec = object.0.spec();
+        let pod_status = object.0.status();
+        let name = pod_metadata.name.as_ref().unwrap();
+        let namespace = pod_metadata.namespace.as_ref().unwrap();
+        let priority = pod_spec.priority.unwrap_or(0);
+        let service_account = pod_spec.service_account.as_deref().unwrap_or(NIL_STR);
+        let node = pod_spec.node_name.as_deref().unwrap_or(NIL_STR);
+        let labels = pod_metadata
+            .labels
+            .as_ref()
+            .map(|x| format!("{:?}", x))
+            .unwrap_or(NIL_STR.to_string());
+        let node_selector = format!(
+            "{:?}",
+            pod_spec
+                .node_selector
+                .as_ref()
+                .unwrap_or(&BTreeMap::<String, String>::new())
+        );
+        if pod_status.is_some() {
+            let pod_status = pod_status.unwrap();
+            let start_time = pod_status
+                .start_time
+                .as_ref()
+                .map(|x| format!("{:?}", x))
+                .unwrap_or(NIL_STR.to_string());
+            let status = pod_status.phase.as_deref().unwrap_or(NIL_STR);
+            let ip = pod_status.pod_ip.as_deref().unwrap_or(NIL_STR);
+            let ips = pod_status
+                .pod_ips
+                .as_deref()
+                .map(|pod_ips| {
+                    pod_ips
+                        .iter()
+                        .map(|x| x.ip.as_deref().unwrap_or(NIL_STR))
+                        .collect::<Vec<&str>>()
+                })
+                .unwrap_or_default();
+            let qos_class = pod_status.qos_class.as_deref().unwrap_or(NIL_STR);
+            let containers = pod_status
+                .container_statuses
+                .as_ref()
+                .map(|containers| {
+                    containers.iter().map(|container| PodDescContainer {
+                        name: container.name.as_str(),
+                        container_id: container.container_id.as_deref().unwrap_or(NIL_STR),
+                        image: container.image.as_str(),
+                        image_id: container.image_id.as_str(),
+                        state: container_state_to_hashmap(container.state.as_ref().unwrap()),
+                        last_state: container_state_to_hashmap(
+                            container.last_state.as_ref().unwrap(),
+                        ),
+                        started: container.started.unwrap_or_default(),
+                        rerestart_count: container.restart_count,
+                    })
+                })
+                .unwrap()
+                .collect::<Vec<PodDescContainer<'rc>>>();
+            let conditions = pod_status
+                .conditions
+                .as_ref()
+                .map(|conditions| {
+                    let mut _conditions = HashMap::new();
+                    for condition in conditions {
+                        _conditions.insert(condition.type_.as_str(), condition.status.as_str());
+                    }
+                    _conditions
+                })
+                .unwrap();
+
+            Self {
+                name,
+                namespace,
+                priority,
+                service_account,
+                labels,
+                node,
+                start_time,
+                status,
+                ip,
+                ips,
+                qos_class,
+                node_selector,
+                containers,
+                conditions,
             }
         } else {
-            let ref_waitting = container_state.waiting.as_ref().unwrap();
-            ContainerStateFields {
-                state: "waiting".to_string(),
-                exit_code: None,
-                message: ref_waitting.message.clone(),
-                reason: ref_waitting.reason.clone(),
-                signal: None,
+            Self {
+                name,
+                namespace,
+                priority,
+                service_account,
+                labels,
+                node,
+                start_time: NIL_STR.to_string(),
+                status: NIL_STR,
+                ip: NIL_STR,
+                ips: Vec::new(),
+                qos_class: NIL_STR,
+                node_selector,
+                containers: Vec::new(),
+                conditions: HashMap::new(),
             }
         }
     }
+}
+
+fn container_state_to_hashmap(container_state: &ContainerState) -> Vec<(&str, String)> {
+    if container_state.terminated.is_some() {
+        let terminaled_status = container_state.terminated.as_ref().unwrap();
+        let mut result = Vec::new();
+        result.extend([
+            ("State", "Terminated".to_string()),
+            ("ExitCode", format!("{}", terminaled_status.exit_code)),
+            (
+                "Finished_At",
+                format!("{:?}", terminaled_status.finished_at),
+            ),
+            (
+                "Message",
+                format!(
+                    "{:?}",
+                    terminaled_status.message.as_deref().unwrap_or(NIL_STR)
+                ),
+            ),
+            (
+                "Reason",
+                format!(
+                    "{:?}",
+                    terminaled_status.reason.as_deref().unwrap_or(NIL_STR)
+                ),
+            ),
+            (
+                "Signal",
+                format!("{:?}", terminaled_status.signal.unwrap_or(0)),
+            ),
+            ("Started_At", format!("{:?}", terminaled_status.started_at)),
+        ]);
+        return result;
+    } else if container_state.running.is_some() {
+        let running_state = container_state.running.as_ref().unwrap();
+        let mut result = Vec::new();
+        result.extend([
+            ("State", "Running".to_string()),
+            ("Start_At", format!("{:?}", running_state.started_at)),
+        ]);
+        return result;
+    } else if container_state.waiting.is_some() {
+        let waiting_state = container_state.waiting.as_ref().unwrap();
+        let mut result = Vec::new();
+        result.extend([
+            ("State", "Waiting".to_string()),
+            (
+                "Reason",
+                format!("{:?}", waiting_state.reason.as_deref().unwrap_or(NIL_STR)),
+            ),
+            (
+                "Message",
+                format!("{:?}", waiting_state.message.as_deref().unwrap_or(NIL_STR)),
+            ),
+        ]);
+        return result;
+    }
+    Vec::new()
+}
+
+pub struct PodDescContainer<'c> {
+    pub name: &'c str,
+    pub container_id: &'c str,
+    pub image: &'c str,
+    pub image_id: &'c str,
+    pub state: Vec<(&'c str, String)>,
+    pub last_state: Vec<(&'c str, String)>,
+    // 此次启动时间
+    pub started: bool,
+    pub rerestart_count: i32,
 }
 
 #[cfg(test)]
-mod tests {
-    fn new_fake_pod(pod_name: &str, node_name: &str, service_account: &str) -> Pod {
-        let mut pod = Pod::default();
-        if pod.spec.is_none() {
-            pod.spec = Some(PodSpec::default());
-        }
-        pod.metadata.name = Some(format!("pod_name_{}", pod_name.to_owned()));
-        pod.spec.as_mut().unwrap().node_name = Some(node_name.to_owned());
-        pod.spec.as_mut().unwrap().service_account = Some(service_account.to_owned());
-        pod
-    }
-    use k8s_openapi::api::core::v1::Pod;
-
-    use super::*;
-    #[test]
-    fn basics() {
-        /* let pods = new_fake_pod("pod1", "nodename1", "sa1");
-        let fields: PodFields = (&pods).into();
-        assert_eq!("nodename1".eq(fields.node_name), true);
-        assert_eq!(true, "sa1".eq(fields.service_account)); */
-    }
-}
+mod tests {}

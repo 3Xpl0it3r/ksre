@@ -2,16 +2,15 @@ use ratatui::layout::{Constraint, Rect};
 use ratatui::Frame;
 use tui_textarea::TextArea;
 
-use crate::app::action::Route;
-use crate::app::state::AppState;
-
-use crate::app::ui::{
-    pod::{draw_page_pod_list, draw_page_pod_spec, draw_page_pod_status, draw_page_pod_tty},
-    util as uiutil,
+use crate::app::{
+    action::Route,
+    state::AppState,
+    ui::{
+        pod::{draw_page_pod_list, draw_page_pod_status, draw_pod_logs, draw_pod_resource},
+        util as uiutil,
+    },
 };
-use crate::kubernetes::api::PodFields;
-
-use super::{draw_pod_logs, draw_pod_resource};
+use crate::kubernetes::api::PodDescribe;
 
 // -------------------------------------
 // ---- pods          | resource       |
@@ -61,13 +60,12 @@ pub fn draw_page_index(
         let obj = state.store_pods.get_value(namespace, pod);
 
         if obj.is_some() {
-            // show pod resources
-            let pod_fields = Some(PodFields::from(obj.as_ref().unwrap()));
+            let pod_describe = Some(PodDescribe::from(obj.as_ref().unwrap()));
 
             match state.cur_route {
-                Route::PodLog => draw_pod_logs(f, state, pod_fields.as_ref(), devops_chunk, reader),
+                Route::PodLog => draw_pod_logs(f, state, pod_describe.as_ref(), devops_chunk, reader),
                 Route::PodTerm => {}
-                _ => draw_page_pod_status(f, state, pod_fields.as_ref(), devops_chunk),
+                _ => draw_page_pod_status(f, state, pod_describe.as_ref(), devops_chunk),
             }
             return;
         }

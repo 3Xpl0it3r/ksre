@@ -151,6 +151,15 @@ pub(super) fn debug_widget(msg: String, title: String) -> Paragraph<'static> {
     );
     msg_wideget
 }
+pub(super) fn debug_widget1(msg: String) -> Paragraph<'static> {
+
+    let msg_wideget = Paragraph::new(msg).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .border_type(BorderType::Rounded)
+    );
+    msg_wideget
+}
 
 pub(super) fn no_border_windows(msg: String) -> Paragraph<'static> {
     let msg_wideget = Paragraph::new(msg).block(

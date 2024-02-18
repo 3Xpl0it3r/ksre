@@ -4,12 +4,12 @@ use ratatui::layout::{Constraint, Rect};
 
 use crate::app::ui::util::{self as uituil, debug_widget, no_border_windows};
 use crate::app::AppState;
-use crate::kubernetes::api::PodFields;
+use crate::kubernetes::api::PodDescribe;
 
 pub fn draw_pod_resource(
     f: &mut Frame,
     state: & AppState,
-    pod_fields: Option<&PodFields>,
+    pod_fields: Option<&PodDescribe>,
     area: Rect,
 ) {
     let outer = uituil::outer_block(f, "Pod Top", area);

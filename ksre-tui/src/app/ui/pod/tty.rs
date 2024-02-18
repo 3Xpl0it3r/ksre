@@ -2,7 +2,7 @@ use ratatui::layout::{Constraint, Rect};
 use ratatui::Frame;
 
 use crate::app::state::AppState;
-use crate::kubernetes::api::PodFields;
+use crate::kubernetes::api::PodDescribe;
 
 use crate::app::ui::util::{self as uiutil, debug_widget};
 
