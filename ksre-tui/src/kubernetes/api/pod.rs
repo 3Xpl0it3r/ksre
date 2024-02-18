@@ -37,13 +37,13 @@ impl<'rc> From<&'rc Rc<RtObject<PodSpec, PodStatus>>> for PodDescribe<'rc> {
         let name = pod_metadata.name.as_ref().unwrap();
         let namespace = pod_metadata.namespace.as_ref().unwrap();
         let priority = pod_spec.priority.unwrap_or(0);
-        let service_account = pod_spec.service_account.as_deref().unwrap_or(NIL_STR);
-        let node = pod_spec.node_name.as_deref().unwrap_or(NIL_STR);
+        let service_account = pod_spec.service_account.as_deref().unwrap_or_default();
+        let node = pod_spec.node_name.as_deref().unwrap_or_default();
         let labels = pod_metadata
             .labels
             .as_ref()
-            .map(|x| format!("{:?}", x))
-            .unwrap_or(NIL_STR.to_string());
+            .map(|x| format!("{:?}", x)).unwrap_or_default();
+         
         let node_selector = format!(
             "{:?}",
             pod_spec
@@ -56,28 +56,27 @@ impl<'rc> From<&'rc Rc<RtObject<PodSpec, PodStatus>>> for PodDescribe<'rc> {
             let start_time = pod_status
                 .start_time
                 .as_ref()
-                .map(|x| format!("{:?}", x))
-                .unwrap_or(NIL_STR.to_string());
-            let status = pod_status.phase.as_deref().unwrap_or(NIL_STR);
-            let ip = pod_status.pod_ip.as_deref().unwrap_or(NIL_STR);
+                .map(|x| format!("{:?}", x)).unwrap_or_default();
+            let status = pod_status.phase.as_deref().unwrap_or_default();
+            let ip = pod_status.pod_ip.as_deref().unwrap_or_default();
             let ips = pod_status
                 .pod_ips
                 .as_deref()
                 .map(|pod_ips| {
                     pod_ips
                         .iter()
-                        .map(|x| x.ip.as_deref().unwrap_or(NIL_STR))
+                        .map(|x| x.ip.as_deref().unwrap_or_default())
                         .collect::<Vec<&str>>()
                 })
                 .unwrap_or_default();
-            let qos_class = pod_status.qos_class.as_deref().unwrap_or(NIL_STR);
+            let qos_class = pod_status.qos_class.as_deref().unwrap_or_default();
             let containers = pod_status
                 .container_statuses
                 .as_ref()
                 .map(|containers| {
                     containers.iter().map(|container| PodDescContainer {
                         name: container.name.as_str(),
-                        container_id: container.container_id.as_deref().unwrap_or(NIL_STR),
+                        container_id: container.container_id.as_deref().unwrap_or_default(),
                         image: container.image.as_str(),
                         image_id: container.image_id.as_str(),
                         state: container_state_to_hashmap(container.state.as_ref().unwrap()),
@@ -148,13 +147,17 @@ fn container_state_to_hashmap(container_state: &ContainerState) -> Vec<(&str, St
             ("ExitCode", format!("{}", terminaled_status.exit_code)),
             (
                 "Finished_At",
-                format!("{:?}", terminaled_status.finished_at),
+                terminaled_status
+                    .finished_at
+                    .as_ref()
+                    .map(|x| format!("{:?}", x))
+                    .unwrap_or_default(),
             ),
             (
                 "Message",
                 format!(
                     "{:?}",
-                    terminaled_status.message.as_deref().unwrap_or(NIL_STR)
+                    terminaled_status.message.as_deref().unwrap_or_default()
                 ),
             ),
             (
@@ -168,7 +171,7 @@ fn container_state_to_hashmap(container_state: &ContainerState) -> Vec<(&str, St
                 "Signal",
                 format!("{:?}", terminaled_status.signal.unwrap_or(0)),
             ),
-            ("Started_At", format!("{:?}", terminaled_status.started_at)),
+            ("Started_At", terminaled_status.started_at.as_ref().map(|x|format!("{:?}",x)).unwrap_or_default())
         ]);
         return result;
     } else if container_state.running.is_some() {
@@ -176,7 +179,7 @@ fn container_state_to_hashmap(container_state: &ContainerState) -> Vec<(&str, St
         let mut result = Vec::new();
         result.extend([
             ("State", "Running".to_string()),
-            ("Start_At", format!("{:?}", running_state.started_at)),
+            ("Start_At", running_state.started_at.as_ref().map(|x|format!("{:?}",x)).unwrap_or_default()),
         ]);
         return result;
     } else if container_state.waiting.is_some() {
@@ -186,11 +189,11 @@ fn container_state_to_hashmap(container_state: &ContainerState) -> Vec<(&str, St
             ("State", "Waiting".to_string()),
             (
                 "Reason",
-                format!("{:?}", waiting_state.reason.as_deref().unwrap_or(NIL_STR)),
+                format!("{:?}", waiting_state.reason.as_deref().unwrap_or_default()),
             ),
             (
                 "Message",
-                format!("{:?}", waiting_state.message.as_deref().unwrap_or(NIL_STR)),
+                format!("{:?}", waiting_state.message.as_deref().unwrap_or_default()),
             ),
         ]);
         return result;

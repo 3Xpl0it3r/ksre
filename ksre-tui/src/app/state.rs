@@ -3,20 +3,20 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use k8s_openapi::api::core::v1::{PodSpec, PodStatus};
-use nucleo_matcher::pattern::{Atom, AtomKind, CaseMatching, Normalization};
-use nucleo_matcher::{Config, Matcher};
+use nucleo_matcher::{
+    pattern::{Atom, AtomKind, CaseMatching, Normalization},
+    Config, Matcher,
+};
 use tokio_util::sync::CancellationToken;
 use tui_textarea::TextArea;
 
-use crate::event::{CusKey, Event, KubeEvent};
-use crate::kubernetes::api::RtObject;
-use crate::kubernetes::indexer::StoreIndex;
-
 use super::action::{Mode, Route};
 use super::keybind::{
-    HandleFn, KeyBindings, KeyContext, DEFAULT_DPL_KEYBIND, DEFAULT_ERROR_HANDLE,
-    DEFAULT_NODE_KEYBIND, DEFAULT_NOP_KEYBINDS, DEFAULT_POD_KEYBIND, KEY_CONTEXT_RECONCILE,
+    HandleFn, KeyBindings, KeyContext, DEFAULT_DPL_KEYBIND, DEFAULT_NODE_KEYBIND,
+    DEFAULT_NOP_KEYBINDS, DEFAULT_POD_KEYBIND, KEY_CONTEXT_RECONCILE,
 };
+use crate::event::{CusKey, Event, KubeEvent};
+use crate::kubernetes::{api::RtObject, indexer::StoreIndex};
 
 impl StatefulList {
     pub fn next(&mut self) {

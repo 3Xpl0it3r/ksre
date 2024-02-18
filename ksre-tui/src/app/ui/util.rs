@@ -142,17 +142,7 @@ pub(super) fn selectable_list_with_mark(stateful_list: &StatefulList) -> List {
     )
 }
 
-pub(super) fn debug_widget(msg: String, title: String) -> Paragraph<'static> {
-    let msg_wideget = Paragraph::new(msg).block(
-        Block::default()
-            .borders(Borders::ALL)
-            .border_type(BorderType::Rounded)
-            .title(title),
-    );
-    msg_wideget
-}
-pub(super) fn debug_widget1(msg: String) -> Paragraph<'static> {
-
+pub(super) fn debug_widget(msg: &str) -> Paragraph {
     let msg_wideget = Paragraph::new(msg).block(
         Block::default()
             .borders(Borders::ALL)
@@ -161,14 +151,6 @@ pub(super) fn debug_widget1(msg: String) -> Paragraph<'static> {
     msg_wideget
 }
 
-pub(super) fn no_border_windows(msg: String) -> Paragraph<'static> {
-    let msg_wideget = Paragraph::new(msg).block(
-        Block::default()
-            .borders(Borders::NONE)
-            .border_type(BorderType::Rounded),
-    );
-    msg_wideget
-}
 
 pub(super) fn outer_block(f: &mut Frame, title: &str, area: Rect) -> Rect {
     let outer = Block::default()

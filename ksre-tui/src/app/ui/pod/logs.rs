@@ -5,7 +5,7 @@ use ratatui::Frame;
 use ratatui::layout::{Constraint, Rect};
 use tui_textarea::TextArea;
 
-use crate::app::ui::util::{self as uituil, debug_widget, no_border_windows};
+use crate::app::ui::util::{self as uituil};
 use crate::app::AppState;
 use crate::kubernetes::api::PodDescribe;
 
@@ -22,7 +22,11 @@ pub fn draw_pod_logs(
         return;
     }
     let (namespace, pod_name) = full_name.unwrap();
-    let outer = uituil::outer_block(f, format!("show {}:{} log [esc]:quit", namespace, pod_name).as_str(), area);
+    let outer = uituil::outer_block(
+        f,
+        format!("show {}:{} log [esc]:quit", namespace, pod_name).as_str(),
+        area,
+    );
 
     f.render_widget(reader.widget(), outer);
 }

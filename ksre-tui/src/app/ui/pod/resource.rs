@@ -1,28 +1,31 @@
 use ratatui::Frame;
 
-use ratatui::layout::{Constraint, Rect};
+use ratatui::layout::Rect;
+use ratatui::widgets::{Block, BorderType, Borders, Paragraph};
 
-use crate::app::ui::util::{self as uituil, debug_widget, no_border_windows};
 use crate::app::AppState;
 use crate::kubernetes::api::PodDescribe;
 
 pub fn draw_pod_resource(
     f: &mut Frame,
-    state: & AppState,
+    state: &AppState,
     pod_fields: Option<&PodDescribe>,
     area: Rect,
 ) {
-    let outer = uituil::outer_block(f, "Pod Top", area);
+    let message = r#"TODO (metric from metric-server)"#;
 
-    let message = format!(
-        "cur route: {:?}, mode: {:?}, input: {:?}",
-        state.cur_route, state.cur_mode, state.user_input.clone(),
-    );
-
-    f.render_widget(debug_widget(message, "hehe".to_string()), outer);
+    f.render_widget(debug_widget(message), area);
 }
 
 // legy
 /* fn styple_text(txt: &str, alig: Alignment, style: Style) -> Text<'static> {
     Text::from(txt).style(style).alignment(alig)
 } */
+fn debug_widget(msg: &str) -> Paragraph {
+    let msg_wideget = Paragraph::new(msg).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .border_type(BorderType::Rounded),
+    );
+    msg_wideget
+}

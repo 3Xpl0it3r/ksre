@@ -2,9 +2,9 @@ use std::ops::Deref;
 
 use ratatui::Frame;
 
-use ratatui::layout::{Rect};
+use ratatui::layout::Rect;
 
-use crate::app::ui::util::{self as uituil, debug_widget1, no_border_windows};
+use crate::app::ui::util::debug_widget;
 use crate::app::AppState;
 use crate::kubernetes::api::PodDescribe;
 
@@ -22,9 +22,15 @@ pub fn draw_page_pod_status(
     /* describe.push(format!("Name:                    {}", pod_describe.name));
     describe.push(format!("Namespace:               {}", pod_describe.namespace));
     describe.push(format!("Priority:                {}", pod_describe.priority)); */
-    describe.push(format!("Service Account:         {}", pod_describe.service_account));
+    describe.push(format!(
+        "Service Account:         {}",
+        pod_describe.service_account
+    ));
     describe.push(format!("Node:                    {}", pod_describe.node));
-    describe.push(format!("Start Time:              {}", pod_describe.start_time));
+    describe.push(format!(
+        "Start Time:              {}",
+        pod_describe.start_time
+    ));
     describe.push(format!("Labels:                  {}", pod_describe.labels));
     describe.push(format!("Status:                  {}", pod_describe.status));
     describe.push(format!("IP:                      {}", pod_describe.ip));
@@ -33,23 +39,23 @@ pub fn draw_page_pod_status(
         describe.push(format!(" IP:     {}", ip));
     } */
     describe.push("Containers".to_string());
-    for container in pod_describe.containers.iter(){
+    for container in pod_describe.containers.iter() {
         describe.push(format!(" {}", container.name));
         /* describe.push(format!("     ContainerId:        {}", container.container_id));
         describe.push(format!("     Image:              {}", container.image));
         describe.push(format!("     ImageId:            {}", container.image_id)); */
-        for (k,v) in container.state.iter() {
+        for (k, v) in container.state.iter() {
             if (*k).eq("State".to_string().as_str()) {
-                describe.push(format!("  {:<26}{:<16}", "State:",v));
-            }else {
-                describe.push(format!("    {:<24}{:<16}", k,v));
+                describe.push(format!("  {:<26}{:<16}", "State:", v));
+            } else {
+                describe.push(format!("    {:<24}{:<16}", k, v));
             }
         }
-        for (k,v) in container.last_state.iter() {
+        for (k, v) in container.last_state.iter() {
             if (*k).eq("State".to_string().as_str()) {
-                describe.push(format!("  {:<26}{:<16}", "Last State:",v));
-            }else {
-                describe.push(format!("    {:<24}{:<16}", k,v));
+                describe.push(format!("  {:<26}{:<16}", "Last State:", v));
+            } else {
+                describe.push(format!("    {:<24}{:<16}", k, v));
             }
         }
     }
@@ -62,6 +68,5 @@ pub fn draw_page_pod_status(
     describe.push(format!("QOS Class:               {}", pod_describe.qos_class));
     describe.push(format!("Node-Selector:           {}", pod_describe.node_selector)); */
 
-
-    f.render_widget(debug_widget1(describe.join("\n")), area)
+    f.render_widget(debug_widget(describe.join("\n").as_str()), area)
 }
