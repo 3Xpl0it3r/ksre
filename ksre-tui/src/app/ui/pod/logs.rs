@@ -11,7 +11,7 @@ use crate::kubernetes::api::PodDescribe;
 
 pub fn draw_pod_logs(
     f: &mut Frame,
-    state: &mut AppState,
+    state: &AppState,
     pod_fields: Option<&PodDescribe>,
     area: Rect,
     reader: tokio::sync::RwLockReadGuard<TextArea>,

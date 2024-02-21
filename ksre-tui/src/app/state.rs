@@ -1,8 +1,10 @@
 use std::char;
+use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::Arc;
 
 use k8s_openapi::api::core::v1::{PodSpec, PodStatus};
+use kube::Resource;
 use nucleo_matcher::{
     pattern::{Atom, AtomKind, CaseMatching, Normalization},
     Config, Matcher,
@@ -16,6 +18,7 @@ use super::keybind::{
     DEFAULT_NOP_KEYBINDS, DEFAULT_POD_KEYBIND, KEY_CONTEXT_RECONCILE,
 };
 use crate::event::{CusKey, Event, KubeEvent};
+use crate::kubernetes::api::PodDescribe;
 use crate::kubernetes::{api::RtObject, indexer::StoreIndex};
 
 impl StatefulList {
@@ -46,6 +49,39 @@ pub struct StatefulList {
     pub items: Vec<Rc<str>>,
     pub index: usize,
     pub fixed: bool,
+}
+
+pub struct KubeDescribeIndices<T> {
+    indices: HashMap<String, HashMap<String, T>>,
+}
+// KubeDescribeIndices<T>[#TODO] (should add some comments)
+impl<T> KubeDescribeIndices<T> {
+    fn new() -> Self {
+        Self {
+            indices: HashMap::new(),
+        }
+    }
+    pub fn get(&self, namespace: &str, name: &str) -> Option<&T> {
+        let store = self.indices.get(namespace)?;
+        store.get(name)
+    }
+
+    fn add(&mut self, namespace: String, name: String, obj: T) {
+        if self.indices.get(namespace.as_str()).is_none() {
+            let cache = HashMap::from([(name.to_string(), obj)]);
+            self.indices.insert(namespace, cache);
+        } else {
+            self.indices
+                .get_mut(namespace.as_str())
+                .unwrap()
+                .insert(name, obj);
+        }
+    }
+    fn remove(&mut self, namespace: String, name: String, obj: T) {
+        if let Some(store) = self.indices.get_mut(namespace.as_str()) {
+            store.remove(&name);
+        }
+    }
 }
 
 pub struct Executor {
@@ -113,6 +149,7 @@ pub struct AppState {
     pub cur_node: i32,
     // 存储 StoreIndex<Clone, Clone>
     pub store_pods: StoreIndex<PodSpec, PodStatus>,
+    pub kube_obj_describe_cache: KubeDescribeIndices<PodDescribe>,
     // ui list 缓存项目
     pub cache_items: StatefulList,
     pub namespace_items: StatefulList,
@@ -137,6 +174,7 @@ impl Default for AppState {
             cur_pod: 0,
             cur_node: 0,
             store_pods: StoreIndex::new(),
+            kube_obj_describe_cache: KubeDescribeIndices::new(),
             stdout_buffer: Arc::new(tokio::sync::RwLock::new(TextArea::default())),
             executor: None,
         }
@@ -150,21 +188,36 @@ impl AppState {
     pub fn handle_pod_reflect_event(&mut self, event: KubeEvent<PodSpec, PodStatus>) -> KeyContext {
         match event {
             KubeEvent::OnAdd(obj) => {
-                self.on_add(&obj);
-                self.store_pods.add(obj).expect("add object failed");
+                self.on_add(obj);
             }
             KubeEvent::OnDel(obj) => {
-                self.on_del(&obj);
-                self.store_pods.add(obj).expect("del obj failed");
+                self.on_del(obj);
             }
         }
         DEFAULT_POD_KEYBIND.tick
     }
 
-    fn on_add(&mut self, obj: &RtObject<PodSpec, PodStatus>) {
-        /* self.cache_items.items.push(obj.resource_name()); */
+    fn on_add(&mut self, obj: RtObject<PodSpec, PodStatus>) {
+        let name = obj.0.meta().name.as_deref().unwrap_or_default();
+        let namespace = obj.0.meta().namespace.as_deref().unwrap_or_default();
+        self.kube_obj_describe_cache.add(
+            namespace.to_string(),
+            name.to_string(),
+            PodDescribe::from(&obj),
+        );
+        self.store_pods.add(obj).expect("add object failed");
     }
-    fn on_del(&mut self, obj: &RtObject<PodSpec, PodStatus>) {}
+    fn on_del(&mut self, obj: RtObject<PodSpec, PodStatus>) {
+        let name = obj.0.meta().name.as_deref().unwrap_or_default().to_string();
+        let namespace = obj
+            .0
+            .meta()
+            .namespace
+            .as_deref()
+            .unwrap_or_default()
+            .to_string();
+        self.store_pods.delete(obj).expect("del obj failed");
+    }
 }
 
 // AppState[#TODO] (should add some comments)

@@ -8,7 +8,6 @@ use tokio::sync::broadcast;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
-use tui_textarea::TextArea;
 
 use crate::event::KubeEvent;
 use crate::tui::Tui;

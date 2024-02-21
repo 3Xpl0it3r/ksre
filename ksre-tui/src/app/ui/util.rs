@@ -1,6 +1,5 @@
 use std::rc::Rc;
 
-use color_eyre::owo_colors::OwoColorize;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Style, Styled, Stylize};
 use ratatui::text::Line;
@@ -174,3 +173,4 @@ pub(super) fn outer_block(f: &mut Frame, title: &str, area: Rect) -> Rect {
     f.render_widget(outer, area);
     Rect::new(area.x + 1, area.y + 1, area.width - 1, area.height - 1)
 }
+

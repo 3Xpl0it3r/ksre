@@ -10,7 +10,7 @@ use crate::kubernetes::api::PodDescribe;
 
 pub fn draw_page_pod_status(
     f: &mut Frame,
-    state: &mut AppState,
+    state: & AppState,
     pod_describe: Option<&PodDescribe>,
     area: Rect,
 ) {
@@ -23,43 +23,54 @@ pub fn draw_page_pod_status(
     /* describe.push(format!("Name:                    {}", pod_describe.name));
     describe.push(format!("Namespace:               {}", pod_describe.namespace));
     describe.push(format!("Priority:                {}", pod_describe.priority)); */
-    describe.push(format!(
-        "Service Account:         {}",
-        pod_describe.service_account
-    ));
-    describe.push(format!("Node:                    {}", pod_describe.node));
-    describe.push(format!(
-        "Start Time:              {}",
-        pod_describe.start_time
-    ));
-    describe.push(format!("Labels:                  {}", pod_describe.labels));
-    describe.push(format!("Status:                  {}", pod_describe.status));
-    describe.push(format!("IP:                      {}", pod_describe.ip));
+    unsafe {
+        describe.push(format!(
+            "Service Account:         {}",
+            &(*pod_describe.service_account)
+        ));
+        describe.push(format!(
+            "Node:                    {}",
+            &(*pod_describe.node)
+        ));
+        describe.push(format!(
+            "Start Time:              {}",
+            pod_describe.start_time
+        ));
+        describe.push(format!(
+            "Labels:                  {}",
+            &(*pod_describe.labels)
+        ));
+        describe.push(format!(
+            "Status:                  {}",
+            &(*pod_describe.status)
+        ));
+        describe.push(format!("IP:                      {}", &(*pod_describe.ip)));
+        describe.push("Containers".to_string());
+        for container in pod_describe.containers.iter() {
+            describe.push(format!(" {}", &(*container.name)));
+            /* describe.push(format!("     ContainerId:        {}", container.container_id));
+            describe.push(format!("     Image:              {}", container.image));
+            describe.push(format!("     ImageId:            {}", container.image_id)); */
+            for (k, v) in container.state.iter() {
+                if (&(**k)).eq("State".to_string().as_str()) {
+                    describe.push(format!("  {:<26}{:<16}", "State:", v));
+                } else {
+                    describe.push(format!("    {:<24}{:<16}", &(**k), v));
+                }
+            }
+            for (k, v) in container.last_state.iter() {
+                if (&(**k)).eq("State".to_string().as_str()) {
+                    describe.push(format!("  {:<26}{:<16}", "Last State:", v));
+                } else {
+                    describe.push(format!("    {:<24}{:<16}", &(**k), v));
+                }
+            }
+        }
+    }
     /* describe.push("IPs:".to_string()); */
     /* for ip in pod_describe.ips.iter() {
         describe.push(format!(" IP:     {}", ip));
     } */
-    describe.push("Containers".to_string());
-    for container in pod_describe.containers.iter() {
-        describe.push(format!(" {}", container.name));
-        /* describe.push(format!("     ContainerId:        {}", container.container_id));
-        describe.push(format!("     Image:              {}", container.image));
-        describe.push(format!("     ImageId:            {}", container.image_id)); */
-        for (k, v) in container.state.iter() {
-            if (*k).eq("State".to_string().as_str()) {
-                describe.push(format!("  {:<26}{:<16}", "State:", v));
-            } else {
-                describe.push(format!("    {:<24}{:<16}", k, v));
-            }
-        }
-        for (k, v) in container.last_state.iter() {
-            if (*k).eq("State".to_string().as_str()) {
-                describe.push(format!("  {:<26}{:<16}", "Last State:", v));
-            } else {
-                describe.push(format!("    {:<24}{:<16}", k, v));
-            }
-        }
-    }
 
     /* describe.push("Conditions".to_string());
     describe.push(" Type            Status".to_string());

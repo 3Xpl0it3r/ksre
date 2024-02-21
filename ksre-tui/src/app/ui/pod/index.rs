@@ -1,14 +1,14 @@
 use color_eyre::owo_colors::OwoColorize;
 use ratatui::layout::{Constraint, Rect};
 use ratatui::text::Line;
+use ratatui::widgets::{Block, BorderType, Borders, Paragraph, Tabs};
 use ratatui::Frame;
-use ratatui::widgets::{Tabs, Block, Borders, BorderType, Paragraph};
 use tui_textarea::TextArea;
 
 use ratatui::style::{Color, Style, Styled, Stylize};
 
 use crate::app::ui::theme::{self, Kanagawa};
-use crate::app::ui::util::{vertical_chunks, horizontal_chunks, debug_widget, outer_block};
+use crate::app::ui::util::{debug_widget, horizontal_chunks, outer_block, vertical_chunks};
 use crate::app::{
     action::Route,
     state::AppState,
@@ -66,22 +66,15 @@ pub fn draw_page_index(
     // devops split 2 items
     draw_bottom_head(f, state, bottom_head);
 
-
     if let Some(pod) = state.cache_items.items.get(state.cache_items.index) {
-        let obj = state.store_pods.get_value(namespace, pod);
+        let pod_describe = state.kube_obj_describe_cache.get(namespace, pod);
 
-        if obj.is_some() {
-            let pod_describe = Some(PodDescribe::from(obj.as_ref().unwrap()));
-
-            match state.cur_route {
-                Route::PodLog => {
-                    draw_pod_logs(f, state, pod_describe.as_ref(), bottom_body, reader)
-                }
-                Route::PodTerm => {}
-                _ => draw_page_pod_status(f, state, pod_describe.as_ref(), bottom_body),
-            }
-            return;
+        match state.cur_route {
+            Route::PodLog => draw_pod_logs(f, state, pod_describe, bottom_body, reader),
+            Route::PodTerm => {}
+            _ => draw_page_pod_status(f, state, pod_describe, bottom_body),
         }
+        return;
     }
     match state.cur_route {
         Route::PodLog => draw_pod_logs(f, state, None, bottom_body, reader),
@@ -92,7 +85,10 @@ pub fn draw_page_index(
 
 fn draw_bottom_head(f: &mut Frame, state: &AppState, area: Rect) {
     let area = outer_block(f, "", area);
-    let area = horizontal_chunks(vec![Constraint::Percentage(20), Constraint::Percentage(50)], area);
+    let area = horizontal_chunks(
+        vec![Constraint::Percentage(20), Constraint::Percentage(50)],
+        area,
+    );
     let id_selected = match state.cur_route {
         Route::PodLog => 1,
         Route::PodTerm => 2,
@@ -103,11 +99,20 @@ fn draw_bottom_head(f: &mut Frame, state: &AppState, area: Rect) {
         .map(|&x| x.to_string().bg(theme::DefaultTheme::Sumlink1).into())
         .collect::<Vec<Line>>();
 
-    let tabs = Tabs::new(colored_items).block(Block::default().borders(Borders::NONE).border_type(BorderType::Rounded)).highlight_style(Style::default().fg(theme::DefaultTheme::VioletOni)).select(id_selected).divider(" ").padding(" ", "");
+    let tabs = Tabs::new(colored_items)
+        .block(
+            Block::default()
+                .borders(Borders::NONE)
+                .border_type(BorderType::Rounded),
+        )
+        .highlight_style(Style::default().fg(theme::DefaultTheme::VioletOni))
+        .select(id_selected)
+        .divider(" ")
+        .padding(" ", "");
 
     f.render_widget(tabs, area[0]);
 
-    let help_message = r#"help: [l]:show pods log, [t]:attach pod, [esc] exit then reback to descibe"#;
+    let help_message =
+        r#"help: [l]:show pods log, [t]:attach pod, [esc] exit then reback to descibe"#;
     f.render_widget(Paragraph::new(help_message), area[1]);
-
 }
