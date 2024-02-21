@@ -38,9 +38,7 @@ impl From<&RtObject<PodSpec, PodStatus>> for PodDescribe {
         let pod_status = object.0.status();
         let name: *const str = pod_metadata.name.as_deref().unwrap();
         let namespace: *const str = pod_metadata.namespace.as_deref().unwrap();
-        let service_account1 = pod_spec.service_account.as_deref().unwrap_or_default();
-        let service_account: *const str =
-            &(*pod_spec.service_account.as_deref().unwrap_or_default());
+        let service_account: *const str = pod_spec.service_account.as_deref().unwrap_or_default();
         let priority = pod_spec.priority.unwrap_or(0);
         let node: *const str = pod_spec.node_name.as_deref().unwrap_or_default();
 
@@ -122,8 +120,6 @@ impl From<&RtObject<PodSpec, PodStatus>> for PodDescribe {
                     _conditions
                 })
                 .unwrap();
-
-            let name_ptr = std::ptr::addr_of!(name);
 
             Self {
                 name,

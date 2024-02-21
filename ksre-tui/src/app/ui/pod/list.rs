@@ -1,5 +1,4 @@
-use k8s_openapi::api::core::v1::Namespace;
-use ratatui::style::{Style, Styled};
+use ratatui::style::Style;
 use ratatui::Frame;
 use ratatui::{
     layout::{Constraint, Rect},

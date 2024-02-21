@@ -80,37 +80,4 @@ impl<P: Clone, U: Clone> StoreIndex<P, U> {
         }
         result
     }
-
-    pub fn all_values(&self, namespace: &str) -> Vec<Rc<RtObject<P, U>>> {
-        let mut result = Vec::<Rc<RtObject<P, U>>>::new();
-        if namespace.eq("all") {
-            for ns in self.index.keys() {
-                if let Some(store) = self.index.get(ns) {
-                    result.extend(store.values().cloned());
-                }
-            }
-        } else if let Some(store) = self.index.get(namespace) {
-            result.extend(store.values().cloned());
-        }
-        result
-    }
-
-    pub fn get_value(&self, ns: &str, key: &str) -> Option<Rc<RtObject<P, U>>> {
-        self.index.get(ns).as_ref()?;
-
-        let store = self.index.get(ns).unwrap();
-        if let Some(obj) = store.get(key) {
-            Some(obj.clone())
-        } else {
-            None
-        }
-    }
-
-    pub fn namespaces(&mut self) -> Vec<Rc<str>> {
-        self.index
-            .keys()
-            .filter(|x| !x.as_ref().eq(""))
-            .map(|x| x.clone())
-            .collect::<Vec<Rc<str>>>()
-    }
 }
