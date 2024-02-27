@@ -1,4 +1,4 @@
-mod metrics;
+pub mod metrics;
 mod pod;
 mod runtime;
 

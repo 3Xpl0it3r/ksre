@@ -40,7 +40,7 @@ pub async fn pod_exec(
     let attached_stdout = attached.stdout().unwrap();
     let attached_stdin = attached.stdin().unwrap();
 
-    let writer = result_writer.clone();
+    let _writer = result_writer.clone();
     let task_0 = tokio::spawn(async move {
         let mut input = input_reader;
         let mut stdin_writer = attached_stdin;

@@ -5,10 +5,10 @@ use ratatui::widgets::{Block, BorderType, Borders, Paragraph, Tabs};
 use ratatui::Frame;
 use tui_textarea::TextArea;
 
-use ratatui::style::{Color, Style, Styled, Stylize};
+use ratatui::style::{Style, Stylize};
 
 use crate::app::ui::theme::{self, Kanagawa};
-use crate::app::ui::util::{debug_widget, horizontal_chunks, outer_block, vertical_chunks};
+use crate::app::ui::util::{horizontal_chunks, outer_block, vertical_chunks};
 use crate::app::{
     action::Route,
     state::AppState,
@@ -17,7 +17,6 @@ use crate::app::{
         util as uiutil,
     },
 };
-use crate::kubernetes::api::PodDescribe;
 
 // -------------------------------------
 // ---- pods          | resource       |
@@ -61,13 +60,12 @@ pub fn draw_page_index(
         .get(state.namespace_items.index)
         .unwrap();
 
-    draw_pod_resource(f, state, None, pod_res_area);
-
     // devops split 2 items
     draw_bottom_head(f, state, bottom_head);
 
     if let Some(pod) = state.cache_items.items.get(state.cache_items.index) {
         let pod_describe = state.kube_obj_describe_cache.get(namespace, pod);
+        draw_pod_resource(f, state, pod_describe, pod_res_area);
 
         match state.cur_route {
             Route::PodLog => draw_pod_logs(f, state, pod_describe, bottom_body, reader),
@@ -76,6 +74,7 @@ pub fn draw_page_index(
         }
         return;
     }
+    draw_pod_resource(f, state, None, pod_res_area);
     match state.cur_route {
         Route::PodLog => draw_pod_logs(f, state, None, bottom_body, reader),
         Route::PodTerm => {}

@@ -1,8 +1,8 @@
-use ratatui::layout::{Constraint, Rect};
+use ratatui::layout::{Rect};
 use ratatui::Frame;
 
 use crate::app::state::AppState;
-use crate::kubernetes::api::PodDescribe;
+
 
 use crate::app::ui::util::{self as uiutil, debug_widget};
 
@@ -23,7 +23,7 @@ pub fn draw_page_pod_tty(
 
 }
 
-fn show_user_commnad(f: &mut Frame, x: u16, y: u16, cmd: &str) {
+fn show_user_commnad(f: &mut Frame, _x: u16, y: u16, cmd: &str) {
     let area = Rect::new(1, y - 4, 32, 3);
     let txt = debug_widget(cmd);
     f.render_widget(txt, area);

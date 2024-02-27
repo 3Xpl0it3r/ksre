@@ -6,13 +6,10 @@ use ratatui::{
 };
 
 use crate::app::action::{Mode, Route};
-use crate::app::state::{AppState, KubeDescribeIndices, StatefulList};
+use crate::app::state::{AppState};
 
 use crate::app::ui::theme::{self, Kanagawa};
 use crate::app::ui::util::{self as uiutil, debug_widget, horizontal_chunks};
-use crate::kubernetes::api::PodDescribe;
-
-use super::status;
 
 // filter <e toggle>
 // namespace<n toggle> | nodename<N toogle> |

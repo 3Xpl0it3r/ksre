@@ -1,15 +1,18 @@
+use std::ops::Sub;
 use std::rc::Rc;
 
+use chrono::{DateTime, Utc};
 use color_eyre::eyre::Result;
 use k8s_openapi::api::core::v1::{Namespace, PodSpec, PodStatus};
-use kube::api::ListParams;
-use kube::{Api, Client as KubeClient, ResourceExt};
-use tokio::sync::broadcast;
-use tokio::sync::mpsc;
-use tokio::task::JoinHandle;
+use kube::{api::ListParams, Api, Client as KubeClient, ResourceExt};
+use tokio::{
+    sync::{broadcast, mpsc},
+    task::JoinHandle,
+};
 use tokio_util::sync::CancellationToken;
 
 use crate::event::KubeEvent;
+use crate::kubernetes::PodMetricsApi;
 use crate::tui::Tui;
 
 use super::action::Route;
@@ -18,7 +21,7 @@ use super::keybind::{KeyContext, DEFAULT_ERROR_HANDLE};
 use super::ui::home::ui_main;
 
 use crate::app::job::{pod_exec, PodExecArgs};
-use crate::app::{state, AppState};
+use crate::app::AppState;
 
 pub struct App {
     tui: Tui,
@@ -28,10 +31,14 @@ pub struct App {
     app_state: AppState,
     task0: JoinHandle<()>,
     task1: JoinHandle<()>,
-    cancel_fn: CancellationToken,
     ready: bool,
 
     cmd_input_writer: Option<mpsc::Sender<String>>,
+
+    // handler
+    // used for fetch pod metrics from kube-metrics-apiserver
+    ticker: Ticker,
+    pod_metrics_api: PodMetricsApi,
 }
 
 impl App {
@@ -40,17 +47,19 @@ impl App {
         kube_event: broadcast::Receiver<KubeEvent<PodSpec, PodStatus>>,
         kube_client: KubeClient,
     ) -> Self {
+        let pod_metrics_api = PodMetricsApi::new(kube_client.clone());
         Self {
             tui,
             pod_event_rx: kube_event,
+            app_state: AppState::new(),
             kube_client,
             should_quit: false,
-            app_state: AppState::default(),
             task0: tokio::spawn(async {}),
             task1: tokio::spawn(async {}),
-            cancel_fn: CancellationToken::new(),
             ready: true,
             cmd_input_writer: None,
+            ticker: Ticker::new(),
+            pod_metrics_api,
         }
     }
 
@@ -88,6 +97,16 @@ impl App {
                 handler(self, None);
                 self.ready = true;
             }
+            if self.ticker.next() && self.app_state.show_handle_pod_metrics() {
+                if let Some((namespace, pod_name)) = self.app_state.pod_name() {
+                    let metric = self.pod_metrics_api.get(namespace.as_ref(), pod_name.as_ref()).await.unwrap();
+                    self.app_state.handle_pod_metrics(metric);
+                }
+                /* for pod_metric in self.pod_metrics_api.list().await {
+                    self.app_state.handle_pod_metrics(pod_metric);
+                } */
+            }
+
 
             self.draw_ui().await;
 
@@ -110,17 +129,17 @@ impl App {
 
 // all handler
 impl App {
-    pub fn handle_next_route(&mut self, cancel: Option<CancellationToken>) {
+    pub fn handle_next_route(&mut self, _cancel: Option<CancellationToken>) {
         self.app_state.next_route();
     }
 
-    pub fn fake_handlefunction(&mut self, cancel: Option<CancellationToken>) {}
+    pub fn fake_handlefunction(&mut self, _cancel: Option<CancellationToken>) {}
 
-    pub fn handle_quit(&mut self, cancel: Option<CancellationToken>) {
+    pub fn handle_quit(&mut self, _cancel: Option<CancellationToken>) {
         self.should_quit = true;
     }
 
-    pub fn select_items_next(&mut self, cancel: Option<CancellationToken>) {
+    pub fn select_items_next(&mut self, _cancel: Option<CancellationToken>) {
         if let Route::PodNamespace = self.app_state.cur_route {
             self.app_state.namespace_items.next();
             return;
@@ -128,7 +147,7 @@ impl App {
 
         self.app_state.cache_items.next();
     }
-    pub fn select_items_prev(&mut self, cancel: Option<CancellationToken>) {
+    pub fn select_items_prev(&mut self, _cancel: Option<CancellationToken>) {
         if let Route::PodNamespace = self.app_state.cur_route {
             self.app_state.namespace_items.prev();
             return;
@@ -212,4 +231,30 @@ impl Drop for App {
 
 impl Drop for AppState {
     fn drop(&mut self) {}
+}
+
+struct Ticker {
+    update_at: DateTime<Utc>,
+    curr_time: DateTime<Utc>,
+}
+
+// Name[#TODO] (should add some comments)
+impl Ticker {
+    fn new() -> Self {
+        Self {
+            update_at: chrono::Utc::now(),
+            curr_time: chrono::Utc::now(),
+        }
+    }
+
+    fn next(&mut self) -> bool {
+        let current = self.curr_time;
+        self.curr_time = chrono::Utc::now();
+
+        if current.sub(self.update_at).num_seconds() > 1 {
+            self.update_at = chrono::Utc::now();
+            return true;
+        }
+        false
+    }
 }

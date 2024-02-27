@@ -62,17 +62,17 @@ impl Route {
 
 pub struct RouteHandler {}
 impl RouteHandler {
-    pub fn pod_logs(state: &mut AppState, reader: Option<tokio::sync::RwLockReadGuard<String>>) {}
+    pub fn pod_logs(_state: &mut AppState, _reader: Option<tokio::sync::RwLockReadGuard<String>>) {}
 
-    pub fn pod_exec(state: &mut AppState, reader: Option<tokio::sync::RwLockReadGuard<String>>) {}
+    pub fn pod_exec(_state: &mut AppState, _reader: Option<tokio::sync::RwLockReadGuard<String>>) {}
 
     pub fn route_switch(
-        state: &mut AppState,
-        reader: Option<tokio::sync::RwLockReadGuard<String>>,
+        _state: &mut AppState,
+        _reader: Option<tokio::sync::RwLockReadGuard<String>>,
     ) {
     }
 
-    pub fn refresh(state: &mut AppState, reader: Option<tokio::sync::RwLockReadGuard<String>>) {}
+    pub fn refresh(_state: &mut AppState, _reader: Option<tokio::sync::RwLockReadGuard<String>>) {}
 }
 
 

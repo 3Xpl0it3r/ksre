@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use ratatui::Frame;
 
 use ratatui::layout::Rect;
@@ -10,7 +8,7 @@ use crate::kubernetes::api::PodDescribe;
 
 pub fn draw_page_pod_status(
     f: &mut Frame,
-    state: & AppState,
+    _state: & AppState,
     pod_describe: Option<&PodDescribe>,
     area: Rect,
 ) {

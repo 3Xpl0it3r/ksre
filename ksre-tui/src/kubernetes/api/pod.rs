@@ -1,5 +1,4 @@
 use std::collections::{BTreeMap, HashMap};
-use std::rc::Rc;
 
 use k8s_openapi::api::core::v1::{ContainerState, PodSpec, PodStatus};
 use kube::{
@@ -67,8 +66,8 @@ impl From<&RtObject<PodSpec, PodStatus>> for PodDescribe {
             let ips = pod_status
                 .pod_ips
                 .as_deref()
-                .map(|pod_ips| {
-                    pod_ips
+                .map(|_pod_ips| {
+                    _pod_ips
                         .iter()
                         .map(|x| {
                             let raw_ptr: *const str =
@@ -83,8 +82,8 @@ impl From<&RtObject<PodSpec, PodStatus>> for PodDescribe {
             let containers = pod_status
                 .container_statuses
                 .as_ref()
-                .map(|containers| {
-                    containers.iter().map(|container| {
+                .map(|_containers| {
+                    _containers.iter().map(|container| {
                         let (state, is_running) =
                             container_state_to_hashmap(container.state.as_ref().unwrap());
                         if is_running {
@@ -109,15 +108,15 @@ impl From<&RtObject<PodSpec, PodStatus>> for PodDescribe {
             let conditions = pod_status
                 .conditions
                 .as_ref()
-                .map(|conditions| {
-                    let mut _conditions = HashMap::new();
-                    for condition in conditions {
-                        _conditions.insert(
+                .map(|_conditions| {
+                    let mut ret = HashMap::new();
+                    for condition in _conditions {
+                        ret.insert(
                             condition.type_.as_str() as *const str,
                             condition.status.as_str() as *const str,
                         );
                     }
-                    _conditions
+                    ret
                 })
                 .unwrap();
 

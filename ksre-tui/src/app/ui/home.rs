@@ -1,8 +1,8 @@
 use std::usize;
 
 use ratatui::layout::{Constraint, Rect};
-use ratatui::style::{Color, Style};
-use ratatui::widgets::Tabs;
+
+
 use ratatui::Frame;
 use tui_textarea::TextArea;
 

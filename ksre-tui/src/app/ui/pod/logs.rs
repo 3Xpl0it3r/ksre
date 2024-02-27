@@ -1,8 +1,8 @@
-use std::rc::Rc;
+
 
 use ratatui::Frame;
 
-use ratatui::layout::{Constraint, Rect};
+use ratatui::layout::{Rect};
 use tui_textarea::TextArea;
 
 use crate::app::ui::util::{self as uituil};
@@ -12,13 +12,13 @@ use crate::kubernetes::api::PodDescribe;
 pub fn draw_pod_logs(
     f: &mut Frame,
     state: &AppState,
-    pod_fields: Option<&PodDescribe>,
+    _pod_fields: Option<&PodDescribe>,
     area: Rect,
     reader: tokio::sync::RwLockReadGuard<TextArea>,
 ) {
     let full_name = state.get_namespaced_pod();
     if full_name.is_none() {
-        let outer = uituil::outer_block(f, "Log [esc to quit]", area);
+        let _outer = uituil::outer_block(f, "Log [esc to quit]", area);
         return;
     }
     let (namespace, pod_name) = full_name.unwrap();

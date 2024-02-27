@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
+use crossterm::event::{KeyCode, KeyEvent};
 
 #[derive(Debug, Clone, Copy)]
 pub enum CusKey {

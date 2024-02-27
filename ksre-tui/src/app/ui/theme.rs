@@ -1,6 +1,6 @@
 use ratatui::style::Color;
 
- pub trait Kanagawa {
+pub trait Kanagawa {
     const Sumlink0: Color = Color::from_u32(0x0016161D);
     const Sumlink1: Color = Color::from_u32(0x001F1F28);
     const BlueWinter: Color = Color::from_u32(0x00252535);
