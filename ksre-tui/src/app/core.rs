@@ -17,7 +17,7 @@ use crate::tui::Tui;
 
 use super::action::Route;
 use super::job::tail_logs;
-use super::keybind::{KeyContext, DEFAULT_ERROR_HANDLE};
+use super::keybind::Handler;
 use super::ui::home::ui_main;
 
 use crate::app::job::{pod_exec, PodExecArgs};
@@ -72,13 +72,12 @@ impl App {
                 .items
                 .push(Rc::from(ns.name_any().as_str()));
         }
-
-        let mut keyctx: KeyContext = DEFAULT_ERROR_HANDLE;
+        let mut keyctx = None;
         loop {
             tokio::select! {
                 tui_event = self.tui.next()=> {
                     if let Some(event) = tui_event {
-                        keyctx = self.app_state.handle_terminal_key_event(event);
+                        keyctx = self.app_state.handle_key_event(event);
                     }
                 },
                 kube_event = self.pod_event_rx.recv() => {
@@ -87,27 +86,26 @@ impl App {
                     }
                 },
             }
-
             // 优先判断是否有cmdcontext , 存在command contxt 意味着当前正在处理command 模式
             if let Some(cmd_context) = self.app_state.consume_command_task() {
                 if let Some(handler) = cmd_context.run_fn {
                     handler(self, Some(cmd_context.stop_fn.clone()));
                 }
-            } else if let Some(handler) = keyctx.handler {
-                handler(self, None);
+            } else if let Some(_handle) = keyctx.take() {
+                _handle(self, None);
                 self.ready = true;
             }
+
             if self.ticker.next() && self.app_state.show_handle_pod_metrics() {
                 if let Some((namespace, pod_name)) = self.app_state.pod_name() {
-                    let metric = self.pod_metrics_api.get(namespace.as_ref(), pod_name.as_ref()).await.unwrap();
+                    let metric = self
+                        .pod_metrics_api
+                        .get(namespace.as_ref(), pod_name.as_ref())
+                        .await
+                        .unwrap();
                     self.app_state.handle_pod_metrics(metric);
                 }
-                /* for pod_metric in self.pod_metrics_api.list().await {
-                    self.app_state.handle_pod_metrics(pod_metric);
-                } */
             }
-
-
             self.draw_ui().await;
 
             if self.should_quit {

@@ -60,22 +60,6 @@ impl Route {
     }
 }
 
-pub struct RouteHandler {}
-impl RouteHandler {
-    pub fn pod_logs(_state: &mut AppState, _reader: Option<tokio::sync::RwLockReadGuard<String>>) {}
-
-    pub fn pod_exec(_state: &mut AppState, _reader: Option<tokio::sync::RwLockReadGuard<String>>) {}
-
-    pub fn route_switch(
-        _state: &mut AppState,
-        _reader: Option<tokio::sync::RwLockReadGuard<String>>,
-    ) {
-    }
-
-    pub fn refresh(_state: &mut AppState, _reader: Option<tokio::sync::RwLockReadGuard<String>>) {}
-}
-
-
 
 
 // endit mode

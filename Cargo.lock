@@ -877,6 +877,9 @@ dependencies = [
 [[package]]
 name = "ksre-agent"
 version = "0.1.0"
+dependencies = [
+ "tokio",
+]
 
 [[package]]
 name = "ksre-tui"

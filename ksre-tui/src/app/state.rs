@@ -1,6 +1,5 @@
 use std::char;
 use std::collections::HashMap;
-use std::ops::Div;
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -11,13 +10,12 @@ use nucleo_matcher::{
     Config, Matcher,
 };
 use tokio_util::sync::CancellationToken;
-use tracing::info;
 use tui_textarea::TextArea;
 
 use super::action::{Mode, Route};
 use super::keybind::{
-    HandleFn, KeyBindings, KeyContext, DEFAULT_DPL_KEYBIND, DEFAULT_NODE_KEYBIND,
-    DEFAULT_NOP_KEYBINDS, DEFAULT_POD_KEYBIND, KEY_CONTEXT_RECONCILE,
+    HandleFn, Handler, KeyBinding, DEFAULT_DEPLOYMENT_KEYBINDING, DEFAULT_NODE_KEYBINDING,
+    DEFAULT_POD_KEYBINDING, DEFAULT_NOOP_KEYBINDING,
 };
 use crate::event::{CusKey, Event, KubeEvent};
 use crate::kubernetes::api::metrics::PodMetrics;
@@ -84,7 +82,7 @@ impl AppState {
 /// kubernetes 事件处理
 impl AppState {
     // 同步来自接收apiserver 数据事件
-    pub fn handle_pod_reflect_event(&mut self, event: KubeEvent<PodSpec, PodStatus>) -> KeyContext {
+    pub fn handle_pod_reflect_event(&mut self, event: KubeEvent<PodSpec, PodStatus>) -> Handler {
         match event {
             KubeEvent::OnAdd(obj) => {
                 self.on_add(obj);
@@ -93,7 +91,7 @@ impl AppState {
                 self.on_del(obj);
             }
         }
-        DEFAULT_POD_KEYBIND.tick
+        None
     }
 
     fn on_add(&mut self, obj: RtObject<PodSpec, PodStatus>) {
@@ -121,25 +119,25 @@ impl AppState {
 
 // AppState[#TODO] (should add some comments)
 impl AppState {
-    pub fn handle_terminal_key_event(&mut self, event: Event) -> KeyContext {
+    pub fn handle_key_event(&mut self, event: Event) -> Handler {
         self.resync_cache_items();
         // 如果当前正在处于insert模式直接处理user insert
         let keybind = self.get_keybings();
 
         if let Event::Key(CusKey::Esc) = event {
             self.handle_esc_key();
-            return KEY_CONTEXT_RECONCILE;
+            return None;
         }
         if let Event::Key(CusKey::Enter) = event {
             self.handle_enter_key();
-            return KEY_CONTEXT_RECONCILE;
+            return None;
         }
 
         if let Mode::Insert = self.cur_mode {
             if let Event::Key(key) = event {
                 self.handle_user_input(key);
             }
-            return KEY_CONTEXT_RECONCILE;
+            return None;
         }
 
         match event {
@@ -151,13 +149,13 @@ impl AppState {
                     self.cur_route = Route::PodList;
                     self.cur_mode = Mode::Insert;
                     self.user_input.clear();
-                    KEY_CONTEXT_RECONCILE
+                    None
                 }
                 CusKey::N => {
                     self.cur_route = Route::PodNamespace;
                     self.namespace_items.fixed = false;
                     self.user_input.clear();
-                    KEY_CONTEXT_RECONCILE
+                    None
                 }
                 CusKey::J => {
                     self.metrics_buffer.select_all();
@@ -170,21 +168,21 @@ impl AppState {
                     keybind.k
                 }
                 CusKey::L => {
-                    self.executor = Some(Executor::new(keybind.l.handler, false, self.cur_route));
+                    self.executor = Some(Executor::new(keybind.l, false, self.cur_route));
                     self.cur_route = Route::PodLog;
-                    KEY_CONTEXT_RECONCILE
+                    None
                 } // show log
                 CusKey::F => {
                     self.cur_route = Route::PodList;
                     self.cur_mode = Mode::Insert;
-                    KEY_CONTEXT_RECONCILE
+                    None
                 } // 检索podlist 赛选
                 CusKey::T => {
                     // 进入terminal 模式
-                    self.executor = Some(Executor::new(keybind.t.handler, false, self.cur_route));
+                    self.executor = Some(Executor::new(keybind.t, false, self.cur_route));
                     self.cur_route = Route::PodTerm;
                     self.cur_mode = Mode::Insert;
-                    KEY_CONTEXT_RECONCILE
+                    None
                 }
                 CusKey::Q => keybind.q,
                 CusKey::Enter => {
@@ -192,7 +190,7 @@ impl AppState {
                         self.namespace_items.fixed = true;
                         self.cur_route = Route::PodIndex;
                     }
-                    KEY_CONTEXT_RECONCILE
+                    None
                 }
                 _ => keybind.tick,
             },
@@ -200,17 +198,17 @@ impl AppState {
     }
 
     // 根据当前的route id来获取对应的keybinds
-    fn get_keybings(&self) -> KeyBindings {
+    fn get_keybings(&self) -> KeyBinding {
         if self.cur_route >= Route::PodIndex && self.cur_route <= Route::PodEnd {
-            return DEFAULT_POD_KEYBIND;
+            return DEFAULT_POD_KEYBINDING;
         }
         if self.cur_route >= Route::DeployIndex && self.cur_route <= Route::DeployEnd {
-            return DEFAULT_DPL_KEYBIND;
+            return DEFAULT_DEPLOYMENT_KEYBINDING;
         }
         if self.cur_route >= Route::NodeIndex && self.cur_route <= Route::NodeEnd {
-            return DEFAULT_NODE_KEYBIND;
+            return DEFAULT_NODE_KEYBINDING;
         }
-        DEFAULT_NOP_KEYBINDS
+        DEFAULT_NOOP_KEYBINDING
     }
 
     fn route_reset(&mut self) {
@@ -291,7 +289,12 @@ impl AppState {
             let mem = container_metric.usage.memory.0;
             let metric_line = format!(
                 "{:<24}{:<12}{:<12}",
-                pod_metrics.metadata.creation_timestamp.unwrap().0.format("%Y-%m-%d %H:%M:%S"),
+                pod_metrics
+                    .metadata
+                    .creation_timestamp
+                    .unwrap()
+                    .0
+                    .format("%Y-%m-%d %H:%M:%S"),
                 cpu,
                 mem,
             );
@@ -501,7 +504,7 @@ impl<T> KubeDescribeIndices<T> {
     }
 }
 
-pub struct Executor {
+pub(super) struct Executor {
     pub run_fn: Option<HandleFn>,
     pub stop_fn: CancellationToken,
     state: bool,

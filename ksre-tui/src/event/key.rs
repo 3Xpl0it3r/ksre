@@ -120,35 +120,3 @@ impl CusKey {
         }
     }
 }
-
-fn demug(key: KeyCode) {
-    match key {
-        KeyCode::Backspace => todo!(),
-        KeyCode::Enter => todo!(),
-        KeyCode::Left => todo!(),
-        KeyCode::Right => todo!(),
-        KeyCode::Up => todo!(),
-        KeyCode::Down => todo!(),
-        KeyCode::Home => todo!(),
-        KeyCode::End => todo!(),
-        KeyCode::PageUp => todo!(),
-        KeyCode::PageDown => todo!(),
-        KeyCode::Tab => todo!(),
-        KeyCode::BackTab => todo!(),
-        KeyCode::Delete => todo!(),
-        KeyCode::Insert => todo!(),
-        KeyCode::F(_) => todo!(),
-        KeyCode::Char(_) => todo!(),
-        KeyCode::Null => todo!(),
-        KeyCode::Esc => todo!(),
-        KeyCode::CapsLock => todo!(),
-        KeyCode::ScrollLock => todo!(),
-        KeyCode::NumLock => todo!(),
-        KeyCode::PrintScreen => todo!(),
-        KeyCode::Pause => todo!(),
-        KeyCode::Menu => todo!(),
-        KeyCode::KeypadBegin => todo!(),
-        KeyCode::Media(_) => todo!(),
-        KeyCode::Modifier(_) => todo!(),
-    }
-}
