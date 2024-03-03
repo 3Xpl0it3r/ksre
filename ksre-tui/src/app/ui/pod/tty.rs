@@ -14,12 +14,12 @@ pub fn draw_page_pod_tty(
 ) {
     let outer = uiutil::outer_block(f, "Terminal", area);
 
-    if !state.user_input.is_empty(){
+    /* if !state.user_input.is_empty(){
         show_user_commnad(f, 0, outer.y, state.user_input.as_str());
     }
 
     let message = reader.join("\n");
-    f.render_widget(debug_widget(message.as_str()), outer);
+    f.render_widget(debug_widget(message.as_str()), outer); */
 
 }
 

@@ -1,15 +1,10 @@
-mod action;
-mod job;
-mod ui;
 mod core;
-mod keybind;
+pub mod handler;
+mod job;
 mod state;
-
-
-pub use core::App;
-pub(self) use state::{AppState};
-
-
-
+mod ui;
 // private mod
 mod metrics;
+
+pub use core::App;
+pub(self) use state::AppState;

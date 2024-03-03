@@ -1,14 +1,17 @@
 use std::rc::Rc;
 
-use ratatui::layout::{Constraint, Direction, Layout, Rect};
-use ratatui::style::{Color, Style, Styled, Stylize};
-use ratatui::text::Line;
-use ratatui::widgets::{Block, BorderType, Borders, List, ListItem, Paragraph, Tabs};
-use ratatui::Frame;
+use ratatui::{
+    layout::{Constraint, Direction, Layout, Rect},
+    style::{Color, Style, Stylize},
+    text::Line,
+    widgets::{Block, BorderType, Borders, List, ListItem, Paragraph, Tabs},
+    Frame,
+};
 
-use crate::app::action::Mode;
-use crate::app::state::StatefulList;
-use crate::app::ui::theme;
+use crate::app::{
+    state::{Mode, StatefulList},
+    ui::theme,
+};
 
 use super::theme::Kanagawa;
 
@@ -111,8 +114,13 @@ pub(super) fn selectable_list_0(stateful_list: &StatefulList) -> List {
 
     for (idx, val) in items.enumerate() {
         if idx == stateful_list.index {
-            list_items
-                .push(ListItem::new(val.as_ref()).style(Style::default().fg(theme::DefaultTheme::BlueSpring).bg(theme::DefaultTheme::Sumlink1)));
+            list_items.push(
+                ListItem::new(val.as_ref()).style(
+                    Style::default()
+                        .fg(theme::DefaultTheme::BlueSpring)
+                        .bg(theme::DefaultTheme::Sumlink1),
+                ),
+            );
         } else {
             list_items.push(ListItem::new(val.as_ref()).style(Style::default()));
         }
@@ -173,4 +181,3 @@ pub(super) fn outer_block(f: &mut Frame, title: &str, area: Rect) -> Rect {
     f.render_widget(outer, area);
     Rect::new(area.x + 1, area.y + 1, area.width - 1, area.height - 1)
 }
-

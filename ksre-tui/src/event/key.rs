@@ -83,7 +83,7 @@ impl From<KeyEvent> for CusKey {
 
 // CusKey[#TODO] (should add some comments)
 impl CusKey {
-    pub fn char(self) -> char {
+    pub fn char(self) -> char{
         match self {
             CusKey::A => 'a',
             CusKey::B => 'b',
@@ -117,6 +117,42 @@ impl CusKey {
             CusKey::None => '-',
             CusKey::Backspace => ' ',
             CusKey::Esc => '~',
+        }
+    }
+    pub fn as_ref(self) -> &'static str {
+        match self {
+            CusKey::A => "a",
+            CusKey::B => "b",
+            CusKey::C => "c",
+            CusKey::D => "d",
+            CusKey::E => "e",
+            CusKey::F => "f",
+            CusKey::G => "g",
+            CusKey::H => "h",
+            CusKey::I => "i",
+            CusKey::J => "j",
+            CusKey::K => "k",
+            CusKey::L => "l",
+            CusKey::M => "m",
+            CusKey::N => "n",
+            CusKey::O => "o",
+            CusKey::P => "p",
+            CusKey::Q => "q",
+            CusKey::R => "r",
+            CusKey::S => "s",
+            CusKey::T => "t",
+            CusKey::U => "u",
+            CusKey::V => "v",
+            CusKey::W => "w",
+            CusKey::X => "x",
+            CusKey::Y => "y",
+            CusKey::Z => "z",
+            CusKey::Space =>    "Space",
+            CusKey::Tab =>      "Tab",
+            CusKey::Enter =>    "Enter",
+            CusKey::None =>     "-",
+            CusKey::Backspace =>"Backspace",
+            CusKey::Esc =>      "Esc",
         }
     }
 }

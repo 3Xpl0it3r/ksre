@@ -1,15 +1,17 @@
-use ratatui::style::Style;
-use ratatui::Frame;
 use ratatui::{
     layout::{Constraint, Rect},
+    style::Style,
     widgets::{Block, BorderType, Borders, List, ListItem},
+    Frame,
 };
 
-use crate::app::action::{Mode, Route};
-use crate::app::state::{AppState};
-
-use crate::app::ui::theme::{self, Kanagawa};
-use crate::app::ui::util::{self as uiutil, debug_widget, horizontal_chunks};
+use crate::app::{
+    state::{AppState, Mode, Route},
+    ui::{
+        theme::{self, Kanagawa},
+        util::{self as uiutil, debug_widget, horizontal_chunks},
+    },
+};
 
 // filter <e toggle>
 // namespace<n toggle> | nodename<N toogle> |
@@ -42,8 +44,8 @@ pub fn draw_page_pod_list(f: &mut Frame, area: Rect, state: &mut AppState) {
 }
 
 fn draw_user_input(f: &mut Frame, area: Rect, state: &AppState) {
-    let input_widget = if let Route::PodList = state.cur_route {
-        uiutil::user_input(state.user_input.as_str(), state.cur_mode)
+    let input_widget = if let Route::PodList = state.get_route() {
+        uiutil::user_input(state.user_input.as_str(), state.get_mode())
     } else {
         uiutil::user_input("", Mode::Normal)
     };
@@ -56,7 +58,7 @@ fn draw_namespaces(f: &mut Frame, area: Rect, state: &AppState) {
         area,
     );
 
-    let list = uiutil::selectable_list_with_mark(&state.namespace_items);
+    let list = uiutil::selectable_list_with_mark(state.list_namespace());
 
     let help_message = r#"[n]     trigger
 [k]     up 
@@ -76,11 +78,7 @@ fn draw_pods(f: &mut Frame, area: Rect, state: &AppState) {
 
 fn pod_select_items(state: &AppState) -> List<'_> {
     let mut list_items = Vec::new();
-    let namespace = state
-        .namespace_items
-        .items
-        .get(state.namespace_items.index)
-        .unwrap();
+    let namespace = state.get_namespace().unwrap();
     let items = state.cache_items.items.iter();
     let title = format!(
         "{:<48}{:<16}{:<16}",
@@ -90,7 +88,7 @@ fn pod_select_items(state: &AppState) -> List<'_> {
     );
     list_items.push(ListItem::new(title).style(Style::default()));
     for (idx, val) in items.enumerate() {
-        let pod_desc = state.kube_obj_describe_cache.get(namespace, val);
+        let pod_desc = state.kube_obj_describe_cache.get(namespace.as_ref(), val);
         let item_txt: String;
         if let Some(describe) = pod_desc {
             unsafe {

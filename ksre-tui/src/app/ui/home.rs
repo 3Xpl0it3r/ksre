@@ -2,15 +2,11 @@ use std::usize;
 
 use ratatui::layout::{Constraint, Rect};
 
-
 use ratatui::Frame;
 use tui_textarea::TextArea;
 
-use crate::app::action::Route;
-use crate::app::state::AppState;
-
-use super::pod;
-use crate::app::ui::util as uiutil;
+use super::{pod, util as uiutil};
+use crate::app::state::{AppState, Route};
 
 const HEAD_TITLE: &'_ str = "ksre - ksre tools";
 
@@ -43,10 +39,10 @@ pub fn ui_main(
 ) {
     let chunks = uiutil::vertical_chunks(vec![Constraint::Length(3), Constraint::Min(1)], f.size());
     // header  pods  nodes
-    draw_header(f, chunks[0], state.cur_route as usize);
+    draw_header(f, chunks[0], state.get_route() as usize);
 
     // pod index is default home page
-    match state.cur_route.into() {
+    match state.get_route().into() {
         View::Pod => pod::draw_page_index(f, state, chunks[1], reader),
         View::Deploy => todo_fn(),
         View::Node => todo_fn(),

@@ -9,27 +9,25 @@ use nucleo_matcher::{
     pattern::{Atom, AtomKind, CaseMatching, Normalization},
     Config, Matcher,
 };
+use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 use tui_textarea::TextArea;
 
-use super::action::{Mode, Route};
-use super::keybind::{
-    HandleFn, Handler, KeyBinding, DEFAULT_DEPLOYMENT_KEYBINDING, DEFAULT_NODE_KEYBINDING,
-    DEFAULT_POD_KEYBINDING, DEFAULT_NOOP_KEYBINDING,
+use crate::{
+    event::{CusKey, Event, KubeEvent},
+    kubernetes::api::metrics::PodMetrics,
+    kubernetes::api::PodDescribe,
+    kubernetes::{api::RtObject, indexer::StoreIndex},
 };
-use crate::event::{CusKey, Event, KubeEvent};
-use crate::kubernetes::api::metrics::PodMetrics;
-use crate::kubernetes::api::PodDescribe;
 
-use crate::kubernetes::{api::RtObject, indexer::StoreIndex};
+use super::handler::POD_MAPPINGS;
 
 pub struct AppState {
-    pub cur_mode: Mode, //当前模式
+    cur_mode: Mode, //当前模式
     pub user_input: UserInput,
     pub fuzz_matcher: Matcher,
-    pub reay: bool,
     // 当前选中的tab页面
-    pub cur_route: Route,
+    cur_route: Route,
     // 当前选中的pod
     pub cur_pod: i32,
     // 当前选中的节点
@@ -52,6 +50,8 @@ pub struct AppState {
 
     // format is timestamp, cpu, memory
     pub pod_metrics_cache: HashMap<String, HashMap<String, CycledCache<(i64, f64, f64)>>>,
+
+    quit: bool,
 }
 
 impl AppState {
@@ -65,7 +65,6 @@ impl AppState {
             nodes_items: StatefulList::default(),
             user_input: UserInput::default(),
             fuzz_matcher: Matcher::new(Config::DEFAULT),
-            reay: true,
             cur_route: Route::PodIndex,
             cur_pod: 0,
             cur_node: 0,
@@ -75,14 +74,15 @@ impl AppState {
             metrics_buffer,
             executor: None,
             pod_metrics_cache: HashMap::new(),
+            quit: false,
         }
     }
 }
 
-/// kubernetes 事件处理
+// kubernetes 事件处理
 impl AppState {
     // 同步来自接收apiserver 数据事件
-    pub fn handle_pod_reflect_event(&mut self, event: KubeEvent<PodSpec, PodStatus>) -> Handler {
+    pub fn handle_podevents(&mut self, event: KubeEvent<PodSpec, PodStatus>) -> Option<Executor> {
         match event {
             KubeEvent::OnAdd(obj) => {
                 self.on_add(obj);
@@ -94,6 +94,7 @@ impl AppState {
         None
     }
 
+    #[inline]
     fn on_add(&mut self, obj: RtObject<PodSpec, PodStatus>) {
         let name = obj.0.meta().name.as_deref().unwrap_or_default();
         let namespace = obj.0.meta().namespace.as_deref().unwrap_or_default();
@@ -104,6 +105,7 @@ impl AppState {
         );
         self.store_pods.add(obj).expect("add object failed");
     }
+    #[inline]
     fn on_del(&mut self, obj: RtObject<PodSpec, PodStatus>) {
         let _name = obj.0.meta().name.as_deref().unwrap_or_default().to_string();
         let _namespace = obj
@@ -119,171 +121,56 @@ impl AppState {
 
 // AppState[#TODO] (should add some comments)
 impl AppState {
-    pub fn handle_key_event(&mut self, event: Event) -> Handler {
-        self.resync_cache_items();
-        // 如果当前正在处于insert模式直接处理user insert
-        let keybind = self.get_keybings();
-
-        if let Event::Key(CusKey::Esc) = event {
-            self.handle_esc_key();
-            return None;
-        }
-        if let Event::Key(CusKey::Enter) = event {
-            self.handle_enter_key();
-            return None;
-        }
-
-        if let Mode::Insert = self.cur_mode {
-            if let Event::Key(key) = event {
-                self.handle_user_input(key);
-            }
-            return None;
-        }
-
+    pub fn dispatch_keyevents(&mut self, event: Event) -> Option<Executor> {
         match event {
-            Event::Tick => keybind.tick,
-            Event::Error => keybind.tick,
-            Event::Key(key) => match key {
-                CusKey::Tab => keybind.tab,
-                CusKey::E => {
-                    self.cur_route = Route::PodList;
-                    self.cur_mode = Mode::Insert;
-                    self.user_input.clear();
-                    None
+            Event::Key(key_char) => {
+                // 优先处理用户输入
+                if Mode::Insert as i32 == self.cur_mode as i32 && !self.handle_user_input(key_char)
+                {
+                    return None;
                 }
-                CusKey::N => {
-                    self.cur_route = Route::PodNamespace;
-                    self.namespace_items.fixed = false;
-                    self.user_input.clear();
-                    None
+                // 第二优先级处理tab键
+                if let CusKey::Tab = key_char {
+                    self.next_route();
+                    return None;
                 }
-                CusKey::J => {
-                    self.metrics_buffer.select_all();
-                    self.metrics_buffer.cut();
-                    keybind.j
-                }
-                CusKey::K => {
-                    self.metrics_buffer.select_all();
-                    self.metrics_buffer.cut();
-                    keybind.k
-                }
-                CusKey::L => {
-                    self.executor = Some(Executor::new(keybind.l, false, self.cur_route));
-                    self.cur_route = Route::PodLog;
-                    None
-                } // show log
-                CusKey::F => {
-                    self.cur_route = Route::PodList;
-                    self.cur_mode = Mode::Insert;
-                    None
-                } // 检索podlist 赛选
-                CusKey::T => {
-                    // 进入terminal 模式
-                    self.executor = Some(Executor::new(keybind.t, false, self.cur_route));
-                    self.cur_route = Route::PodTerm;
-                    self.cur_mode = Mode::Insert;
-                    None
-                }
-                CusKey::Q => keybind.q,
-                CusKey::Enter => {
-                    if let Route::PodNamespace = self.cur_route {
-                        self.namespace_items.fixed = true;
-                        self.cur_route = Route::PodIndex;
+                // 第三开始dispatch到具体窗口handler来处理对应的keyevent
+                if self.cur_route.to_pod() {
+                    self.sync_cacheitems_for_pods();
+                    if let Some(f) = POD_MAPPINGS.get(key_char.as_ref()) {
+                        f(self)
+                    } else {
+                        None
                     }
+                } else if self.cur_route.to_deployment() {
+                    self.sync_cacheitems_for_deployments();
+                    None
+                } else if self.cur_route.to_node() {
+                    self.sync_cacheitems_for_nodes();
+                    None
+                } else {
                     None
                 }
-                _ => keybind.tick,
-            },
-        }
-    }
-
-    // 根据当前的route id来获取对应的keybinds
-    fn get_keybings(&self) -> KeyBinding {
-        if self.cur_route >= Route::PodIndex && self.cur_route <= Route::PodEnd {
-            return DEFAULT_POD_KEYBINDING;
-        }
-        if self.cur_route >= Route::DeployIndex && self.cur_route <= Route::DeployEnd {
-            return DEFAULT_DEPLOYMENT_KEYBINDING;
-        }
-        if self.cur_route >= Route::NodeIndex && self.cur_route <= Route::NodeEnd {
-            return DEFAULT_NODE_KEYBINDING;
-        }
-        DEFAULT_NOOP_KEYBINDING
-    }
-
-    fn route_reset(&mut self) {
-        match self.cur_route {
-            m if m < Route::PodEnd => self.cur_route = Route::PodIndex,
-            m if m < Route::DeployEnd => self.cur_route = Route::DeployIndex,
-            m if m < Route::NodeEnd => self.cur_route = Route::PodIndex,
-            _ => self.cur_route = Route::PodIndex,
-        }
-    }
-
-    // esc key handler
-    fn handle_esc_key(&mut self) {
-        self.route_reset();
-        if let Some(executor) = self.executor.take() {
-            if self.cur_route == Route::PodLog {
-                self.cur_route = Route::PodIndex;
             }
-            executor.stop_fn.cancel();
-        }
-        match self.cur_route {
-            d if d >= Route::PodIndex && d <= Route::PodEnd && d != Route::PodLog => {
-                self.user_input.clear()
-            }
-            _ => {}
-        }
-        if !self.namespace_items.fixed {
-            self.namespace_items.fixed = true;
-        }
-        // in esc mode, all mode will convert to normal mode
-        self.cur_mode = Mode::Normal;
-    }
-
-    fn handle_enter_key(&mut self) {
-        match self.cur_mode {
-            // normal模式下enter键1. select,
-            Mode::Normal => {
-                if !self.namespace_items.fixed {
-                    self.route_reset();
-                    self.namespace_items.fixed = true;
+            Event::Tick => {
+                if self.cur_route.to_pod() {
+                    self.sync_cacheitems_for_pods();
+                    None
+                } else if self.cur_route.to_deployment() {
+                    self.sync_cacheitems_for_deployments();
+                    None
+                } else if self.cur_route.to_node() {
+                    self.sync_cacheitems_for_nodes();
+                    None
+                } else {
+                    None
                 }
             }
-            Mode::Insert => {
-                self.cur_mode = Mode::Normal;
-                self.user_input.done();
-            }
-            Mode::Command => {}
-        }
-        // insert模式下 ,只需要处理inputchar
-        // command模式下,只需要处理command
-    }
-
-    fn handle_user_input(&mut self, key: CusKey) {
-        match key {
-            CusKey::Backspace => {
-                if !self.user_input.is_empty() {
-                    self.user_input.pop();
-                }
-            }
-            _ => self.user_input.push(key.char()),
+            _ => None,
         }
     }
 
-    pub fn handle_pod_metrics(&mut self, pod_metrics: PodMetrics) {
-        let namespace = pod_metrics.meta().namespace.as_deref().unwrap();
-        let pod_name = pod_metrics.meta().name.as_deref().unwrap();
-        let namespace_cache = self
-            .pod_metrics_cache
-            .entry(namespace.to_string())
-            .or_default();
-        let metrics_cache = namespace_cache
-            .entry(pod_name.to_string())
-            .or_insert(CycledCache::<(i64, f64, f64)>::with_capacity(60));
-
-        // todo: only get the first container metrics as pod metrics
+    pub fn add_metrics(&mut self, pod_metrics: PodMetrics) {
         if let Some(container_metric) = pod_metrics.containers.into_iter().next() {
             let cpu = container_metric.usage.cpu.0;
             let mem = container_metric.usage.memory.0;
@@ -303,17 +190,15 @@ impl AppState {
         }
     }
 
-    fn resync_cache_items(&mut self) {
-        if self.user_input.fixed && !self.user_input.is_empty() {
-            return;
-        }
+    #[inline]
+    fn sync_cacheitems_for_pods(&mut self) {
         let namespace = self
             .namespace_items
             .items
             .get(self.namespace_items.index)
             .unwrap();
         let items = self.store_pods.all_keys(namespace);
-        if self.cur_route as i32 == Route::PodList as i32 && !self.user_input.is_empty() {
+        if !self.user_input.is_empty() {
             let filter_items = Atom::new(
                 self.user_input.as_str(),
                 CaseMatching::Ignore,
@@ -332,52 +217,122 @@ impl AppState {
         }
     }
 
-    pub fn stdout_buffer_reader(&self) -> Arc<tokio::sync::RwLock<TextArea<'static>>> {
-        self.stdout_buffer.clone()
+    #[inline]
+    fn sync_cacheitems_for_deployments(&mut self) {}
+    #[inline]
+    fn sync_cacheitems_for_nodes(&mut self) {}
+
+    #[inline]
+    fn handle_user_input(&mut self, key: CusKey) -> bool {
+        // true ,input has done
+        match key {
+            CusKey::Backspace => {
+                self.user_input.pop();
+                false
+            }
+            CusKey::Enter | CusKey::Esc => {
+                self.user_input.upate_state(true);
+                self.cur_mode = Mode::Normal;
+                true
+            }
+            _ => {
+                self.user_input.push(key.char());
+                false
+            }
+        }
     }
 
-    pub fn stdout_buffer_writer(&self) -> Arc<tokio::sync::RwLock<TextArea<'static>>> {
-        { /* self.stdout_buffer.try_write().unwrap().clear(); */ }
-        self.stdout_buffer.clone()
-    }
     pub fn next_route(&mut self) {
+        // switch route will stop all executors
+        if let Some(executor) = self.executor.take() {
+            executor.stop()
+        }
+        // clean all relative buffer
+        self.user_input.clear();
+        self.cache_items.reset();
+        // clean all metrics buffer
+        self.metrics_buffer.select_all();
+        self.metrics_buffer.cut();
+
         self.cur_route = self.cur_route.next();
     }
 
-    // normal 模式下self.command_ctx是None
-    pub fn consume_command_task(&self) -> Option<&Executor> {
-        self.executor.as_ref()?;
-        return self.executor.as_ref();
+    #[inline]
+    pub fn get_route(&self) -> Route {
+        self.cur_route
+    }
+    #[inline]
+    pub fn update_route(&mut self, route: Route) {
+        self.cur_route = route
+    }
+    #[inline]
+    pub fn get_mode(&self) -> Mode {
+        self.cur_mode
+    }
+    #[inline]
+    pub fn update_mode(&mut self, mode: Mode) {
+        self.cur_mode = mode
     }
 
-    pub fn get_namespaced_pod(&self) -> Option<(&str, &str)> {
-        let namespace = self.namespace_items.items.get(self.namespace_items.index);
-        self.cache_items
+    pub fn get_namespace(&self) -> Option<Rc<str>> {
+        self.namespace_items
             .items
-            .get(self.cache_items.index)
-            .map(|pod| (namespace.as_ref().unwrap() as &str, pod.as_ref()))
+            .get(self.namespace_items.index)
+            .cloned()
     }
 
-    pub fn show_handle_pod_metrics(&self) -> bool {
-        self.cur_route >= Route::PodIndex && self.cur_route <= Route::PodEnd
-    }
-
-    pub fn cancel_executor(&mut self) {
+    pub fn stop_executor(&mut self) {
         if let Some(executor) = self.executor.take() {
             executor.stop_fn.cancel();
         }
     }
 
-    pub fn pod_name(&self) -> Option<(Rc<str>, Rc<str>)> {
+    pub fn get_pod(&self) -> Option<Rc<str>> {
         if self.cur_route > Route::PodEnd {
             return None;
         }
-        if let Some(namespace) = self.namespace_items.current_item() {
-            if let Some(pod_name) = self.cache_items.current_item() {
-                return Some((namespace, pod_name));
-            }
-        }
+        self.cache_items.current_item()
+    }
+
+    pub fn initial_namespaces(&mut self, ns_name: Rc<str>) {
+        self.namespace_items.items.push(ns_name);
+    }
+
+    pub fn list_namespace(&self) -> &StatefulList {
+        &self.namespace_items
+    }
+}
+
+// handlers
+impl AppState {
+    pub fn handle_quit(&mut self) -> Option<Executor> {
+        self.quit = true;
         None
+    }
+}
+
+impl AppState {
+    pub fn should_quit(&self) -> bool {
+        self.quit
+    }
+}
+
+pub struct Executor {
+    normal_task: Option<fn(&AppState)>,
+    stop_fn: CancellationToken,
+    async_task: JoinHandle<()>,
+    e_type: bool, // true -> commond task, false mean async_task
+}
+
+impl Executor {
+    pub fn execute(&self) {}
+    fn stop(self) {
+        if self.stop_fn.is_cancelled() {
+            self.stop_fn.cancel()
+        }
+        if self.async_task.is_finished() {
+            self.async_task.abort()
+        }
     }
 }
 
@@ -463,11 +418,13 @@ pub struct StatefulList {
 
 impl StatefulList {
     fn current_item(&self) -> Option<Rc<str>> {
-        if let Some(item) = self.items.get(self.index) {
-            Some(item.clone())
-        } else {
-            None
-        }
+        self.items.get(self.index).cloned()
+    }
+
+    fn reset(&mut self) {
+        self.fixed = false;
+        self.items.clear();
+        self.index = 0;
     }
 }
 
@@ -504,41 +461,24 @@ impl<T> KubeDescribeIndices<T> {
     }
 }
 
-pub(super) struct Executor {
-    pub run_fn: Option<HandleFn>,
-    pub stop_fn: CancellationToken,
-    state: bool,
-    pub prev_route: Route,
-}
-
-impl Executor {
-    fn new(hander: Option<HandleFn>, _is_running: bool, prev_route: Route) -> Executor {
-        Executor {
-            run_fn: hander,
-            state: false,
-            stop_fn: CancellationToken::new(),
-            prev_route,
-        }
-    }
-}
-
 #[derive(Default)]
 pub struct UserInput {
     buffer: String,
-    fixed: bool,
+    done: bool, // true represent input op has done
 }
 
-// UserInput[#TODO] (should add some comments)
 impl UserInput {
-    pub fn clear(&mut self) {
+    fn clear(&mut self) {
         self.buffer.clear();
-        self.fixed = false;
+        self.done = false;
     }
-    pub fn is_empty(&self) -> bool {
+    fn is_empty(&self) -> bool {
         self.buffer.is_empty()
     }
     fn pop(&mut self) {
-        self.buffer.pop();
+        if !self.buffer.is_empty() {
+            self.buffer.pop();
+        }
     }
 
     fn push(&mut self, c: char) {
@@ -548,12 +488,84 @@ impl UserInput {
     pub fn as_str(&self) -> &str {
         self.buffer.as_str()
     }
-    fn done(&mut self) {
-        self.fixed = true;
-    }
     pub fn clone(&self) -> String {
         self.buffer.clone()
     }
+    pub fn ready(&self) -> bool {
+        self.done && !self.buffer.is_empty()
+    }
+    pub fn upate_state(&mut self, state: bool) {
+        self.done = state
+    }
+}
+
+const ROUTE_STEP: isize = 100;
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum Route {
+    PodIndex = 0, // pod begin
+    PodNamespace,
+    PodList,
+    PodState,
+    PodTerm,
+    PodLog,
+    PodEnd, // pod end
+    DeployIndex = ROUTE_STEP,
+    DeployEnd,
+    NodeIndex = 2 * ROUTE_STEP,
+    NodeEnd,
+    PlaceHolder = 3 * ROUTE_STEP,
+}
+
+impl Route {
+    #[inline]
+    pub fn route_step() -> isize {
+        ROUTE_STEP
+    }
+    #[inline]
+    pub fn to_pod(self) -> bool {
+        self >= Route::PodIndex && self <= Route::PodEnd
+    }
+    #[inline]
+    pub fn to_deployment(self) -> bool {
+        self >= Route::DeployIndex && self <= Route::DeployEnd
+    }
+    #[inline]
+    pub fn to_node(self) -> bool {
+        self >= Route::NodeIndex && self <= Route::NodeEnd
+    }
+}
+
+impl PartialOrd for Route {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        let this = *self as isize;
+        let another = *other as isize;
+        Some(this.cmp(&another))
+    }
+}
+
+impl Route {
+    pub fn next(self) -> Self {
+        if self as usize == 200 {
+            Route::PodIndex
+        } else {
+            let c_tb_nr = self as usize;
+            match c_tb_nr {
+                0 => Route::DeployIndex,
+                100 => Route::NodeIndex,
+                _ => unreachable!(),
+            }
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum Mode {
+    Insert,
+    Normal,
+    // in command module will disable all key event from tui terminal
+    // when live command mode, appstate will empty all event buffer from tui event channel
+    Command,
 }
 
 #[cfg(test)]

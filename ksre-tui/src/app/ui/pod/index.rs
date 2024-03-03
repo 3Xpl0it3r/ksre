@@ -1,20 +1,20 @@
 use color_eyre::owo_colors::OwoColorize;
-use ratatui::layout::{Constraint, Rect};
-use ratatui::text::Line;
-use ratatui::widgets::{Block, BorderType, Borders, Paragraph, Tabs};
-use ratatui::Frame;
+use ratatui::{
+    layout::{Constraint, Rect},
+    text::Line,
+    widgets::{Block, BorderType, Borders, Paragraph, Tabs},
+    Frame,
+};
 use tui_textarea::TextArea;
 
 use ratatui::style::{Style, Stylize};
 
-use crate::app::ui::theme::{self, Kanagawa};
-use crate::app::ui::util::{horizontal_chunks, outer_block, vertical_chunks};
 use crate::app::{
-    action::Route,
-    state::AppState,
+    state::{AppState, Route},
     ui::{
         pod::{draw_page_pod_list, draw_page_pod_status, draw_pod_logs, draw_pod_resource},
-        util as uiutil,
+        theme::{self, Kanagawa},
+        util::{self as uiutil, horizontal_chunks, outer_block, vertical_chunks},
     },
 };
 
@@ -54,20 +54,16 @@ pub fn draw_page_index(
     //
     draw_page_pod_list(f, pod_list_area, state);
 
-    let namespace = state
-        .namespace_items
-        .items
-        .get(state.namespace_items.index)
-        .unwrap();
+    let namespace = state.get_namespace().unwrap();
 
     // devops split 2 items
     draw_bottom_head(f, state, bottom_head);
 
-    if let Some(pod) = state.cache_items.items.get(state.cache_items.index) {
-        let pod_describe = state.kube_obj_describe_cache.get(namespace, pod);
+    if let Some(pod) = state.get_pod() {
+        let pod_describe = state.kube_obj_describe_cache.get(namespace.as_ref(), pod.as_ref());
         draw_pod_resource(f, state, pod_describe, pod_res_area);
 
-        match state.cur_route {
+        match state.get_route() {
             Route::PodLog => draw_pod_logs(f, state, pod_describe, bottom_body, reader),
             Route::PodTerm => {}
             _ => draw_page_pod_status(f, state, pod_describe, bottom_body),
@@ -75,7 +71,7 @@ pub fn draw_page_index(
         return;
     }
     draw_pod_resource(f, state, None, pod_res_area);
-    match state.cur_route {
+    match state.get_route() {
         Route::PodLog => draw_pod_logs(f, state, None, bottom_body, reader),
         Route::PodTerm => {}
         _ => draw_page_pod_status(f, state, None, bottom_body),
@@ -88,7 +84,7 @@ fn draw_bottom_head(f: &mut Frame, state: &AppState, area: Rect) {
         vec![Constraint::Percentage(20), Constraint::Percentage(50)],
         area,
     );
-    let id_selected = match state.cur_route {
+    let id_selected = match state.get_route() {
         Route::PodLog => 1,
         Route::PodTerm => 2,
         _ => 0,
