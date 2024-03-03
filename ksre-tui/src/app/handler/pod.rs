@@ -17,6 +17,7 @@ pub fn handle_esc_key(app_state: &mut AppState) -> Option<Executor> {
 
 pub fn handle_enter_key(app_state: &mut AppState) -> Option<Executor> {
     if let Route::PodNamespace = app_state.get_route() {
+        app_state.namespace_sts_confirm();
         app_state.update_route(Route::PodList);
     }
     None
@@ -25,6 +26,7 @@ pub fn handle_enter_key(app_state: &mut AppState) -> Option<Executor> {
 pub fn trigger_userinput(app_state: &mut AppState) -> Option<Executor> {
     match app_state.get_route() {
         Route::PodIndex | Route::PodList | Route::PodState => {
+            app_state.clean_user_input();
             app_state.update_mode(Mode::Insert);
         }
         _ => {}

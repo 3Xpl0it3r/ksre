@@ -77,7 +77,6 @@ pub(super) fn user_input(input_char: &'_ str, input_mode: Mode) -> Paragraph {
         .style(match input_mode {
             Mode::Normal => Style::default(),
             Mode::Insert => Style::default().fg(Color::LightYellow),
-            Mode::Command => Style::default(),
         })
         .block(
             Block::default()
@@ -138,7 +137,7 @@ pub(super) fn selectable_list_with_mark(stateful_list: &StatefulList) -> List {
 
     for (idx, val) in items.enumerate() {
         if idx == stateful_list.index {
-            if stateful_list.fixed {
+            if stateful_list.confirmed {
                 list_items.push(ListItem::new(Line::styled(
                     format!("[✓] {}", val.as_ref()),
                     Style::default(),

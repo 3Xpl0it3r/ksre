@@ -192,12 +192,8 @@ impl AppState {
 
     #[inline]
     fn sync_cacheitems_for_pods(&mut self) {
-        let namespace = self
-            .namespace_items
-            .items
-            .get(self.namespace_items.index)
-            .unwrap();
-        let items = self.store_pods.all_keys(namespace);
+        let namespace = self.get_namespace().unwrap();
+        let items = self.store_pods.all_keys(namespace.as_ref());
         if !self.user_input.is_empty() {
             let filter_items = Atom::new(
                 self.user_input.as_str(),
@@ -211,9 +207,11 @@ impl AppState {
             .map(|x| x.0)
             .collect::<Vec<Rc<str>>>();
             self.cache_items.items = filter_items;
-            self.cache_items.index = 0;
         } else {
             self.cache_items.items = items;
+        }
+        if !self.user_input.is_completed() {
+            self.cache_items.index = 0;
         }
     }
 
@@ -231,7 +229,7 @@ impl AppState {
                 false
             }
             CusKey::Enter | CusKey::Esc => {
-                self.user_input.upate_state(true);
+                self.user_input.complete();
                 self.cur_mode = Mode::Normal;
                 true
             }
@@ -301,6 +299,20 @@ impl AppState {
     pub fn list_namespace(&self) -> &StatefulList {
         &self.namespace_items
     }
+
+    pub fn clean_user_input(&mut self) {
+        self.user_input.clear();
+    }
+
+
+
+    pub fn namespace_sts_confirm(&mut self) {
+        self.namespace_items.confirm();
+    }
+    pub fn namespace_sts_is_confirmed(&self)-> bool {
+        self.namespace_items.is_confirmed()
+    }
+
 }
 
 // handlers
@@ -413,7 +425,7 @@ impl StatefulList {
 pub struct StatefulList {
     pub items: Vec<Rc<str>>,
     pub index: usize,
-    pub fixed: bool,
+    pub confirmed: bool,
 }
 
 impl StatefulList {
@@ -422,9 +434,15 @@ impl StatefulList {
     }
 
     fn reset(&mut self) {
-        self.fixed = false;
+        self.confirmed = false;
         self.items.clear();
         self.index = 0;
+    }
+    fn is_confirmed(&self) -> bool {
+        self.confirmed
+    }
+    fn confirm(&mut self) {
+        self.confirmed = true;
     }
 }
 
@@ -461,41 +479,57 @@ impl<T> KubeDescribeIndices<T> {
     }
 }
 
-#[derive(Default)]
 pub struct UserInput {
     buffer: String,
-    done: bool, // true represent input op has done
+    completed: bool, // true represent input op has done
+}
+
+// Default[#TODO] (should add some comments)
+impl Default for UserInput {
+    fn default() -> Self {
+        Self { buffer: String::new(), completed: true }
+    }
 }
 
 impl UserInput {
+    #[inline]
     fn clear(&mut self) {
         self.buffer.clear();
-        self.done = false;
+        self.completed = true;
     }
+    #[inline]
     fn is_empty(&self) -> bool {
         self.buffer.is_empty()
     }
+    #[inline]
     fn pop(&mut self) {
         if !self.buffer.is_empty() {
             self.buffer.pop();
         }
+        self.completed = false;
     }
 
+    #[inline]
     fn push(&mut self, c: char) {
         self.buffer.push(c);
+        self.completed = false;
     }
 
+    #[inline]
     pub fn as_str(&self) -> &str {
         self.buffer.as_str()
     }
+    #[inline]
     pub fn clone(&self) -> String {
         self.buffer.clone()
     }
-    pub fn ready(&self) -> bool {
-        self.done && !self.buffer.is_empty()
+    #[inline]
+    pub fn is_completed(&self) -> bool {
+        self.completed
     }
-    pub fn upate_state(&mut self, state: bool) {
-        self.done = state
+    #[inline]
+    pub fn complete(&mut self) {
+        self.completed = true;
     }
 }
 
@@ -563,9 +597,6 @@ impl Route {
 pub enum Mode {
     Insert,
     Normal,
-    // in command module will disable all key event from tui terminal
-    // when live command mode, appstate will empty all event buffer from tui event channel
-    Command,
 }
 
 #[cfg(test)]
