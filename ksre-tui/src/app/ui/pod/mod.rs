@@ -1,21 +1,10 @@
-mod index;
-mod list;
-mod status;
-mod spec;
-mod tty;
-mod resource;
-mod logs;
-
-
-pub(super) use resource::draw_pod_resource;
-pub(super) use logs::draw_pod_logs;
-pub(super) use status::draw_page_pod_status;
-
-
-pub(super) use list::draw_page_pod_list;
-
+pub(super) mod index;
+pub(super) mod list;
+pub(super) mod status;
+pub(super) mod spec;
+pub(super) mod tty;
+pub(super) mod resource;
+pub(super) mod logs;
 
 pub use index::draw_page_index;
-
-
 

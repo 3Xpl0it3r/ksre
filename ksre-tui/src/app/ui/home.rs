@@ -20,11 +20,11 @@ pub enum View {
 // From[#TODO] (should add some comments)
 impl From<Route> for View {
     fn from(value: Route) -> Self {
-        if value >= Route::PodIndex && value <= Route::PodEnd {
+        if value >= Route::Pod && value <= Route::PodEnd {
             View::Pod
-        } else if value >= Route::DeployIndex && value <= Route::DeployEnd {
+        } else if value >= Route::Deployment && value <= Route::DeployEnd {
             View::Deploy
-        } else if value >= Route::NodeIndex && value <= Route::NodeEnd {
+        } else if value >= Route::NodeIndex && value <= Route::Node {
             View::Node
         } else {
             View::Error

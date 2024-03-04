@@ -1,6 +1,3 @@
-pub mod metrics;
-mod pod;
-mod runtime;
+pub mod object;
+pub mod pod;
 
-pub use pod::PodDescribe;
-pub use runtime::RtObject;

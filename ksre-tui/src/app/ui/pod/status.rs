@@ -2,13 +2,12 @@ use ratatui::Frame;
 
 use ratatui::layout::Rect;
 
-use crate::app::ui::util::debug_widget;
-use crate::app::AppState;
-use crate::kubernetes::api::PodDescribe;
+use crate::app::{state::AppState, ui::util::debug_widget};
+use crate::kubernetes::api::pod::PodDescribe;
 
 pub fn draw_page_pod_status(
     f: &mut Frame,
-    _state: & AppState,
+    _state: &AppState,
     pod_describe: Option<&PodDescribe>,
     area: Rect,
 ) {

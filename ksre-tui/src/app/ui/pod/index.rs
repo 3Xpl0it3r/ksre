@@ -1,4 +1,4 @@
-use color_eyre::owo_colors::OwoColorize;
+use ratatui::style::{Style, Stylize};
 use ratatui::{
     layout::{Constraint, Rect},
     text::Line,
@@ -7,15 +7,17 @@ use ratatui::{
 };
 use tui_textarea::TextArea;
 
-use ratatui::style::{Style, Stylize};
-
 use crate::app::{
     state::{AppState, Route},
     ui::{
-        pod::{draw_page_pod_list, draw_page_pod_status, draw_pod_logs, draw_pod_resource},
         theme::{self, Kanagawa},
         util::{self as uiutil, horizontal_chunks, outer_block, vertical_chunks},
     },
+};
+
+use super::{
+    list::draw_page_pod_list, logs::draw_pod_logs, resource::draw_pod_resource,
+    status::draw_page_pod_status,
 };
 
 // -------------------------------------
@@ -54,13 +56,13 @@ pub fn draw_page_index(
     //
     draw_page_pod_list(f, pod_list_area, state);
 
-    let namespace = state.get_namespace().unwrap();
+    let namespace = state.namespace_cache.get().unwrap();
 
     // devops split 2 items
     draw_bottom_head(f, state, bottom_head);
 
-    if let Some(pod) = state.get_pod() {
-        let pod_describe = state.kube_obj_describe_cache.get(namespace.as_ref(), pod.as_ref());
+    if let Some(pod) = state.cache_items.get() {
+        let pod_describe = state.pod_describes.get(namespace.as_ref(), pod.as_ref());
         draw_pod_resource(f, state, pod_describe, pod_res_area);
 
         match state.get_route() {
@@ -91,7 +93,7 @@ fn draw_bottom_head(f: &mut Frame, state: &AppState, area: Rect) {
     };
     let colored_items = vec!["Describe", "Log", "Terminal"]
         .iter()
-        .map(|&x| x.to_string().bg(theme::DefaultTheme::Sumlink1).into())
+        .map(|&x| x.to_string().bg(theme::DefaultTheme::SUMLINK1).into())
         .collect::<Vec<Line>>();
 
     let tabs = Tabs::new(colored_items)
@@ -100,7 +102,7 @@ fn draw_bottom_head(f: &mut Frame, state: &AppState, area: Rect) {
                 .borders(Borders::NONE)
                 .border_type(BorderType::Rounded),
         )
-        .highlight_style(Style::default().fg(theme::DefaultTheme::VioletOni))
+        .highlight_style(Style::default().fg(theme::DefaultTheme::VIOLET_ONI))
         .select(id_selected)
         .divider(" ")
         .padding(" ", "");

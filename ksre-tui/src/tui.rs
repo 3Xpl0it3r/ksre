@@ -146,7 +146,7 @@ impl Drop for Tui {
     }
 }
 
-pub fn initialize_panic_handler() {
+fn initialize_panic_handler() {
     let original_hook = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |panic_info| {
         crossterm::execute!(std::io::stderr(), crossterm::terminal::LeaveAlternateScreen).unwrap();

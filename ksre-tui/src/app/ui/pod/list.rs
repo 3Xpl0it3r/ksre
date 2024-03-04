@@ -13,11 +13,6 @@ use crate::app::{
     },
 };
 
-// filter <e toggle>
-// namespace<n toggle> | nodename<N toogle> |
-// podlist
-
-// page for show pod list
 pub fn draw_page_pod_list(f: &mut Frame, area: Rect, state: &mut AppState) {
     // split windows chunks[0] for input, chunk[1] for podlist
     let area = uiutil::vertical_chunks(
@@ -58,7 +53,7 @@ fn draw_namespaces(f: &mut Frame, area: Rect, state: &AppState) {
         area,
     );
 
-    let list = uiutil::selectable_list_with_mark(state.list_namespace());
+    let list = uiutil::selectable_list_1(&state.namespace_cache);
 
     let help_message = r#"[n]     trigger
 [k]     up 
@@ -76,10 +71,10 @@ fn draw_pods(f: &mut Frame, area: Rect, state: &AppState) {
     f.render_widget(list, area);
 }
 
-fn pod_select_items(state: &AppState) -> List<'_> {
+fn pod_select_items(app_state: &AppState) -> List<'_> {
     let mut list_items = Vec::new();
-    let namespace = state.get_namespace().unwrap();
-    let items = state.cache_items.items.iter();
+    let namespace = app_state.namespace_cache.get().unwrap();
+    let items = app_state.cache_items.list().iter();
     let title = format!(
         "{:<48}{:<16}{:<16}",
         "Pod".to_string(),
@@ -88,7 +83,7 @@ fn pod_select_items(state: &AppState) -> List<'_> {
     );
     list_items.push(ListItem::new(title).style(Style::default()));
     for (idx, val) in items.enumerate() {
-        let pod_desc = state.kube_obj_describe_cache.get(namespace.as_ref(), val);
+        let pod_desc = app_state.pod_describes.get(namespace.as_ref(), val);
         let item_txt: String;
         if let Some(describe) = pod_desc {
             unsafe {
@@ -108,12 +103,12 @@ fn pod_select_items(state: &AppState) -> List<'_> {
             );
         }
 
-        if idx == state.cache_items.index {
+        if idx == app_state.cache_items.index() {
             list_items.push(
                 ListItem::new(item_txt).style(
                     ratatui::style::Style::default()
-                        .fg(theme::DefaultTheme::BlueLight)
-                        .bg(theme::DefaultTheme::Sumlink1),
+                        .fg(theme::DefaultTheme::BLUE_LIGHT)
+                        .bg(theme::DefaultTheme::SUMLINK1),
                 ),
             );
         } else {

@@ -1,28 +1,21 @@
-use ratatui::layout::{Rect};
+use ratatui::layout::Rect;
 use ratatui::Frame;
 
 use crate::app::state::AppState;
 
-
 use crate::app::ui::util::{self as uiutil, debug_widget};
 
+#[allow(dead_code)]
 pub fn draw_page_pod_tty(
     f: &mut Frame,
     area: Rect,
-    state: &mut AppState,
-    reader: tokio::sync::RwLockReadGuard<Vec<String>>,
+    _state: &mut AppState,
+    _reader: tokio::sync::RwLockReadGuard<Vec<String>>,
 ) {
-    let outer = uiutil::outer_block(f, "Terminal", area);
-
-    /* if !state.user_input.is_empty(){
-        show_user_commnad(f, 0, outer.y, state.user_input.as_str());
-    }
-
-    let message = reader.join("\n");
-    f.render_widget(debug_widget(message.as_str()), outer); */
-
+    let _outer = uiutil::outer_block(f, "Terminal", area);
 }
 
+#[allow(dead_code)]
 fn show_user_commnad(f: &mut Frame, _x: u16, y: u16, cmd: &str) {
     let area = Rect::new(1, y - 4, 32, 3);
     let txt = debug_widget(cmd);

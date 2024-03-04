@@ -1,4 +1,2 @@
-mod keybind;
-mod pod;
-
-pub(super) use keybind::POD_MAPPINGS;
+pub(crate) mod keybind;
+pub(crate) mod pod;

@@ -6,7 +6,7 @@ use kube::{
     Resource,
 };
 
-use crate::kubernetes::api::runtime::RtObject;
+use crate::kubernetes::api::object::RtObject;
 
 const NIL_STR: &'_ str = "<none>";
 

@@ -1,11 +1,7 @@
-pub mod api;
-pub mod indexer;
-pub mod helper;
-pub mod reflector;
+#![allow(dead_code)]
 
-mod metrics;
-
-pub use metrics::PodMetricsApi;
-
-
-
+pub(crate) mod api;
+pub(crate) mod helper;
+pub(crate) mod indexer;
+pub(crate) mod metrics;
+pub(crate) mod reflector;

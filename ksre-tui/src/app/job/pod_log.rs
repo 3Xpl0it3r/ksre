@@ -16,6 +16,7 @@ pub async fn tail_logs(
     let log_opts = LogParams::default();
     let mut log_stream = pods.log_stream(pod_name.as_str(), &log_opts).await.unwrap().lines();
 
+
     loop {
         tokio::select! {
             _ = cancellation_token.cancelled() => break,

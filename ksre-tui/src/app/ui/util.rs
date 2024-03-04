@@ -15,17 +15,6 @@ use crate::app::{
 
 use super::theme::Kanagawa;
 
-pub(super) fn style_error() -> Style {
-    Style::default().fg(Color::Red)
-}
-
-pub(super) fn style_warn() -> Style {
-    Style::default().fg(Color::Yellow)
-}
-
-pub(super) fn style_info() -> Style {
-    Style::default().fg(Color::Green)
-}
 
 pub(super) fn titled_block(title: &'static str) -> Block {
     Block::default()
@@ -41,17 +30,6 @@ pub(super) fn vertical_chunks(constraits: Vec<Constraint>, size: Rect) -> Rc<[Re
         .split(size)
 }
 
-pub(super) fn vertical_margined_chunks(
-    constraints: Vec<Constraint>,
-    size: Rect,
-    margin: u16,
-) -> Rc<[Rect]> {
-    Layout::default()
-        .constraints(constraints)
-        .direction(Direction::Vertical)
-        .margin(margin)
-        .split(size)
-}
 
 pub(super) fn horizontal_chunks(constraits: Vec<Constraint>, size: Rect) -> Rc<[Rect]> {
     Layout::default()
@@ -60,17 +38,6 @@ pub(super) fn horizontal_chunks(constraits: Vec<Constraint>, size: Rect) -> Rc<[
         .split(size)
 }
 
-pub(super) fn horizontal_margined_chunks(
-    constraits: Vec<Constraint>,
-    size: Rect,
-    margin: u16,
-) -> Rc<[Rect]> {
-    Layout::default()
-        .constraints(constraits)
-        .direction(Direction::Horizontal)
-        .margin(margin)
-        .split(size)
-}
 
 pub(super) fn user_input(input_char: &'_ str, input_mode: Mode) -> Paragraph {
     Paragraph::new(input_char)
@@ -89,7 +56,7 @@ pub(super) fn user_input(input_char: &'_ str, input_mode: Mode) -> Paragraph {
 pub(super) fn selected_tab(values: Vec<&str>, id_selected: usize) -> Tabs<'_> {
     let colored_items = values
         .iter()
-        .map(|x| x.to_string().bg(theme::DefaultTheme::Sumlink1).into())
+        .map(|x| x.to_string().bg(theme::DefaultTheme::SUMLINK1).into())
         .collect::<Vec<Line>>();
     Tabs::new(colored_items)
         .block(
@@ -99,25 +66,26 @@ pub(super) fn selected_tab(values: Vec<&str>, id_selected: usize) -> Tabs<'_> {
         )
         .highlight_style(
             Style::default()
-                .fg(theme::DefaultTheme::OrangeSurimi)
-                .bg(theme::DefaultTheme::Sumlink1),
+                .fg(theme::DefaultTheme::ORANGE_SURIMI)
+                .bg(theme::DefaultTheme::SUMLINK1),
         )
         .select(id_selected)
         .divider(" ")
         .padding(" ", "")
 }
 
-pub(super) fn selectable_list_0(stateful_list: &StatefulList) -> List {
-    let mut list_items = Vec::new();
-    let items = stateful_list.items.iter();
 
-    for (idx, val) in items.enumerate() {
-        if idx == stateful_list.index {
+
+#[allow(dead_code)]
+pub(super) fn selectable_list(stateful_list: &StatefulList) -> List {
+    let mut list_items = Vec::new();
+    for (idx, val) in stateful_list.list().iter().enumerate() {
+        if idx == stateful_list.index() {
             list_items.push(
                 ListItem::new(val.as_ref()).style(
                     Style::default()
-                        .fg(theme::DefaultTheme::BlueSpring)
-                        .bg(theme::DefaultTheme::Sumlink1),
+                        .fg(theme::DefaultTheme::BLUE_SPRING)
+                        .bg(theme::DefaultTheme::SUMLINK1),
                 ),
             );
         } else {
@@ -131,13 +99,13 @@ pub(super) fn selectable_list_0(stateful_list: &StatefulList) -> List {
     )
 }
 
-pub(super) fn selectable_list_with_mark(stateful_list: &StatefulList) -> List {
+pub(super) fn selectable_list_1(stateful_list: &StatefulList) -> List {
     let mut list_items = Vec::new();
-    let items = stateful_list.items.iter();
+    let items = stateful_list.list();
 
-    for (idx, val) in items.enumerate() {
-        if idx == stateful_list.index {
-            if stateful_list.confirmed {
+    for (idx, val) in items.iter().enumerate() {
+        if idx == stateful_list.index() {
+            if stateful_list.is_confirmed() {
                 list_items.push(ListItem::new(Line::styled(
                     format!("[✓] {}", val.as_ref()),
                     Style::default(),

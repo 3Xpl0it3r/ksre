@@ -1,10 +1,9 @@
-mod core;
-pub mod handler;
-mod job;
-mod state;
-mod ui;
-// private mod
-mod metrics;
+#![allow(dead_code)]
 
-pub use core::App;
-pub(self) use state::AppState;
+pub(super) mod handler;
+pub(super) mod job;
+pub(super) mod metrics;
+pub(super) mod state;
+pub(super) mod ui;
+
+pub(crate) mod core;

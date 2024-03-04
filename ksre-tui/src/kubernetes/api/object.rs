@@ -14,7 +14,7 @@ pub struct RtObject<P: Clone, U: Clone>(pub Object<P, U>);
 
 // RtObject<>[#TODO] (should add some comments)
 impl<P: Clone, U: Clone> RtObject<P, U> {
-    pub fn  resource_name(& self) -> String {
+    pub fn resource_name(&self) -> String {
         format!(
             "{}:{}",
             self.0.metadata.namespace.as_ref().unwrap(),
