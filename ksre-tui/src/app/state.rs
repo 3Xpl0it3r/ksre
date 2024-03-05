@@ -12,7 +12,8 @@ use crate::kubernetes::{api::pod::PodDescribe, indexer::StoreIndex};
 pub struct AppState {
     kube_client: KubeClient,
     cur_mode: Mode, //当前模式
-    cur_route: Route,
+    tabpage: TabPage,
+    route: Route,
 
     pub fuzz_matcher: Matcher,
     pub user_input: UserInput,
@@ -37,12 +38,13 @@ impl AppState {
         Self {
             kube_client,
             cur_mode: Mode::Normal,
+            route: Route::PodIndex,
             cache_items: StatefulList::default(),
             namespace_cache: StatefulList::default(),
             nodes_cache: StatefulList::default(),
             user_input: UserInput::default(),
             fuzz_matcher: Matcher::new(Config::DEFAULT),
-            cur_route: Route::Pod,
+            tabpage: TabPage::Pod,
             pod_storage: StoreIndex::new(),
             pod_describes: KubeDescribeIndices::new(),
             stdout_buffer: Arc::new(tokio::sync::RwLock::new(TextArea::default())),
@@ -73,17 +75,22 @@ impl AppState {
         self.metrics_buffer.select_all();
         self.metrics_buffer.cut();
 
-        self.cur_route = self.cur_route.next();
+        self.tabpage = self.tabpage.next();
     }
 
     #[inline]
-    pub fn get_route(&self) -> Route {
-        self.cur_route
+    pub fn get_tabpage(&self) -> TabPage {
+        self.tabpage
+    }
+
+    #[inline]
+    pub fn get_route(& self) -> Route {
+        self.route
     }
 
     #[inline]
     pub fn set_route(&mut self, route: Route) {
-        self.cur_route = route
+        self.route = route
     }
     #[inline]
     pub fn get_mode(&self) -> Mode {
@@ -239,6 +246,10 @@ impl StatefulList {
         self.confirmed
     }
     #[inline]
+    pub fn un_confirm(&mut self) {
+        self.confirmed = false;
+    }
+    #[inline]
     pub fn confirm(&mut self) {
         self.confirmed = true;
     }
@@ -350,63 +361,40 @@ impl UserInput {
     }
 }
 
-const ROUTE_STEP: isize = 100;
-
-#[derive(Clone, Copy, PartialEq, Debug)]
-pub enum Route {
-    Pod = 0, // pod begin
-    PodNamespace,
-    PodList,
-    PodState,
-    PodTerm,
-    PodLog,
-    PodEnd, // pod end
-    Deployment = ROUTE_STEP,
-    DeployEnd,
-    NodeIndex = 2 * ROUTE_STEP,
+#[derive(Clone, Copy, Debug)]
+pub enum TabPage {
+    Pod,
+    Deploy,
     Node,
 }
 
-impl Route {
-    #[inline]
-    pub fn route_step() -> isize {
-        ROUTE_STEP
-    }
-    #[inline]
-    pub fn to_pod(self) -> bool {
-        self >= Route::Pod && self <= Route::PodEnd
-    }
-    #[inline]
-    pub fn to_deployment(self) -> bool {
-        self >= Route::Deployment && self <= Route::DeployEnd
-    }
-    #[inline]
-    pub fn to_node(self) -> bool {
-        self >= Route::NodeIndex && self <= Route::Node
-    }
-}
-
-impl PartialOrd for Route {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        let this = *self as isize;
-        let another = *other as isize;
-        Some(this.cmp(&another))
-    }
-}
-
-impl Route {
+impl TabPage {
     pub fn next(self) -> Self {
-        if self as usize == 200 {
-            Route::Pod
-        } else {
-            let c_tb_nr = self as usize;
-            match c_tb_nr {
-                0 => Route::Deployment,
-                100 => Route::NodeIndex,
-                _ => unreachable!(),
-            }
+        match self {
+            TabPage::Pod => TabPage::Deploy,
+            TabPage::Deploy => TabPage::Node,
+            TabPage::Node => TabPage::Pod,
         }
     }
+    pub fn prev(self) -> Self {
+        match self {
+            TabPage::Pod => TabPage::Node,
+            TabPage::Deploy => TabPage::Pod,
+            TabPage::Node => TabPage::Pod,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum Route {
+    PodIndex,
+    PodNamespace,
+    PodList,
+    PodState,
+    PodLog,
+    PodTerm,
+
+    DeployIndex,
 }
 
 #[derive(Clone, Copy, Debug)]

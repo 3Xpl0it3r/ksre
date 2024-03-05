@@ -15,7 +15,7 @@ use crate::tui::Tui;
 
 use super::{
     handler::keybind::{DEPLOYMENT_KEYMAPS, NODE_KEYMAPS, POD_KEYMAPS},
-    state::{AppState, Executor, Mode, Route},
+    state::{AppState, Executor, Mode, TabPage},
     ui::home::ui_main,
 };
 
@@ -124,13 +124,12 @@ impl App {
                     return None;
                 }
                 // 第三开始dispatch到具体窗口handler来处理对应的keyevent
-                let handler = if self.app_state.get_route().to_pod() {
-                    POD_KEYMAPS.get(key_char.as_ref())
-                } else if self.app_state.get_route().to_deployment() {
-                    DEPLOYMENT_KEYMAPS.get(key_char.as_ref())
-                } else {
-                    NODE_KEYMAPS.get(key_char.as_ref())
+                let handler = match self.app_state.get_tabpage() {
+                    TabPage::Pod => POD_KEYMAPS.get(key_char.as_ref()),
+                    TabPage::Deploy => DEPLOYMENT_KEYMAPS.get(key_char.as_ref()),
+                    TabPage::Node => NODE_KEYMAPS.get(key_char.as_ref()),
                 };
+
                 if let Some(handler) = handler {
                     handler(&mut self.app_state)
                 } else {
@@ -186,14 +185,10 @@ impl App {
 
 impl App {
     fn resync_caches(&mut self) {
-        if self.app_state.get_route() <= Route::PodEnd {
-            self.resync_pod_caches();
-        } else if self.app_state.get_route() >= Route::Deployment
-            && self.app_state.get_route() <= Route::DeployEnd
-        {
-            self.resync_deployment_caches();
-        } else {
-            self.resync_nodes_caches();
+        match self.app_state.get_tabpage() {
+            TabPage::Pod => self.resync_pod_caches(),
+            TabPage::Deploy => self.resync_deployment_caches(),
+            TabPage::Node => self.resync_nodes_caches(),
         }
     }
     #[inline]
@@ -223,19 +218,9 @@ impl App {
     }
 
     #[inline]
-    fn resync_deployment_caches(&mut self) {
-        if self.app_state.get_route() < Route::Deployment
-            || self.app_state.get_route() > Route::DeployEnd
-        {
-            return;
-        }
-    }
+    fn resync_deployment_caches(&mut self) {}
     #[inline]
-    fn resync_nodes_caches(&mut self) {
-        if self.app_state.get_route() < Route::NodeIndex {
-            return;
-        }
-    }
+    fn resync_nodes_caches(&mut self) {}
 }
 
 // app tempoary task relative

@@ -7,8 +7,9 @@ use ratatui::{
 };
 use tui_textarea::TextArea;
 
+use crate::app::state::Route;
 use crate::app::{
-    state::{AppState, Route},
+    state::AppState,
     ui::{
         theme::{self, Kanagawa},
         util::{self as uiutil, horizontal_chunks, outer_block, vertical_chunks},

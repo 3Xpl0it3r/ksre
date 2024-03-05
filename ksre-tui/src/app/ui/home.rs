@@ -6,7 +6,7 @@ use ratatui::Frame;
 use tui_textarea::TextArea;
 
 use super::{pod, util as uiutil};
-use crate::app::state::{AppState, Route};
+use crate::app::state::{AppState, TabPage};
 
 const HEAD_TITLE: &'_ str = "ksre - ksre tools";
 
@@ -17,21 +17,6 @@ pub enum View {
     Error,
 }
 
-// From[#TODO] (should add some comments)
-impl From<Route> for View {
-    fn from(value: Route) -> Self {
-        if value >= Route::Pod && value <= Route::PodEnd {
-            View::Pod
-        } else if value >= Route::Deployment && value <= Route::DeployEnd {
-            View::Deploy
-        } else if value >= Route::NodeIndex && value <= Route::Node {
-            View::Node
-        } else {
-            View::Error
-        }
-    }
-}
-
 pub fn ui_main(
     f: &mut Frame,
     state: &mut AppState,
@@ -39,20 +24,18 @@ pub fn ui_main(
 ) {
     let chunks = uiutil::vertical_chunks(vec![Constraint::Length(3), Constraint::Min(1)], f.size());
     // header  pods  nodes
-    draw_header(f, chunks[0], state.get_route() as usize);
+    draw_header(f, chunks[0], state.get_tabpage() as usize);
 
     // pod index is default home page
-    match state.get_route().into() {
-        View::Pod => pod::draw_page_index(f, state, chunks[1], reader),
-        View::Deploy => todo_fn(),
-        View::Node => todo_fn(),
-        View::Error => unreachable!(),
+    match state.get_tabpage() {
+        TabPage::Pod => pod::draw_page_index(f, state, chunks[1], reader),
+        TabPage::Deploy => todo_fn(),
+        TabPage::Node => todo_fn(),
     }
 }
 fn todo_fn() {}
 
 fn draw_header(f: &mut Frame, area: Rect, tab_nr: usize) {
-    let tab_nr = tab_nr / Route::route_step() as usize;
     f.render_widget(uiutil::titled_block(HEAD_TITLE), area);
 
     let tabs = uiutil::selected_tab(vec!["[ pods ]", "[ deployment ]", "[ nodes ]"], tab_nr);

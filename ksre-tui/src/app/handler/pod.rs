@@ -1,9 +1,10 @@
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
+use crate::app::state::Route;
 use crate::app::{
     job::pod_log,
-    state::{AppState, Executor, Mode, Route},
+    state::{AppState, Executor, Mode},
 };
 
 pub fn handle_quit(app_state: &mut AppState) -> Option<&mut Executor> {
@@ -15,9 +16,9 @@ pub fn handle_esc_key(app_state: &mut AppState) -> Option<&mut Executor> {
     match app_state.get_route() {
         Route::PodLog => {
             app_state.stop_executor();
-            app_state.set_route(Route::Pod);
+            app_state.set_route(Route::PodIndex);
         }
-        _ => app_state.set_route(Route::Pod),
+        _ => app_state.set_route(Route::PodIndex),
     }
     None
 }
@@ -32,7 +33,7 @@ pub fn handle_enter_key(app_state: &mut AppState) -> Option<&mut Executor> {
 
 pub fn trigger_userinput(app_state: &mut AppState) -> Option<&mut Executor> {
     match app_state.get_route() {
-        Route::Pod | Route::PodList | Route::PodState => {
+        Route::PodIndex | Route::PodList | Route::PodState => {
             app_state.user_input.clear();
             app_state.set_mode(Mode::Insert);
         }
@@ -43,6 +44,7 @@ pub fn trigger_userinput(app_state: &mut AppState) -> Option<&mut Executor> {
 
 pub fn trigger_namespace_select(app_state: &mut AppState) -> Option<&mut Executor> {
     app_state.set_route(Route::PodNamespace);
+    app_state.namespace_cache.un_confirm();
     None
 }
 
@@ -51,7 +53,7 @@ pub fn select_next_item(app_state: &mut AppState) -> Option<&mut Executor> {
         Route::PodNamespace => {
             app_state.namespace_cache.next();
         }
-        Route::Pod | Route::PodList => {
+        Route::PodIndex | Route::PodList => {
             app_state.cache_items.next();
         }
         _ => {}
@@ -64,7 +66,7 @@ pub fn select_prev_item(app_state: &mut AppState) -> Option<&mut Executor> {
         Route::PodNamespace => {
             app_state.namespace_cache.prev();
         }
-        Route::Pod | Route::PodList => {
+        Route::PodIndex | Route::PodList => {
             app_state.cache_items.prev();
         }
         _ => {}

@@ -5,8 +5,9 @@ use ratatui::{
     Frame,
 };
 
+use crate::app::state::Route;
 use crate::app::{
-    state::{AppState, Mode, Route},
+    state::{AppState, Mode},
     ui::{
         theme::{self, Kanagawa},
         util::{self as uiutil, debug_widget, horizontal_chunks},
