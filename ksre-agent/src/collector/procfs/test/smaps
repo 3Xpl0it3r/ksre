@@ -1,0 +1,144 @@
+00400000-014c4000 r-xp 00000000 08:01 2888934                            /nginx-ingress-controller
+Size:              17168 kB
+Rss:                6212 kB
+Pss:                6212 kB
+Shared_Clean:          0 kB
+Shared_Dirty:          0 kB
+Private_Clean:      6212 kB
+Private_Dirty:         0 kB
+Referenced:         6212 kB
+Anonymous:             0 kB
+AnonHugePages:         0 kB
+Swap:                  0 kB
+KernelPageSize:        4 kB
+MMUPageSize:           4 kB
+Locked:                0 kB
+VmFlags: rd ex mr mp me dw sd
+014c4000-02705000 r--p 010c4000 08:01 2888934                            /nginx-ingress-controller
+Size:              18692 kB
+Rss:                8332 kB
+Pss:                8332 kB
+Shared_Clean:          0 kB
+Shared_Dirty:          0 kB
+Private_Clean:      8332 kB
+Private_Dirty:         0 kB
+Referenced:         8332 kB
+Anonymous:             0 kB
+AnonHugePages:         0 kB
+Swap:                  0 kB
+KernelPageSize:        4 kB
+MMUPageSize:           4 kB
+Locked:                0 kB
+VmFlags: rd mr mp me dw sd
+02705000-02780000 rw-p 02305000 08:01 2888934                            /nginx-ingress-controller
+Size:                492 kB
+Rss:                 232 kB
+Pss:                 232 kB
+Shared_Clean:          0 kB
+Shared_Dirty:          0 kB
+Private_Clean:        96 kB
+Private_Dirty:       136 kB
+Referenced:          232 kB
+Anonymous:           136 kB
+AnonHugePages:         0 kB
+Swap:                  0 kB
+KernelPageSize:        4 kB
+MMUPageSize:           4 kB
+Locked:                0 kB
+VmFlags: rd wr mr mp me dw ac sd
+02780000-027af000 rw-p 00000000 00:00 0
+Size:                188 kB
+Rss:                  96 kB
+Pss:                  96 kB
+Shared_Clean:          0 kB
+Shared_Dirty:          0 kB
+Private_Clean:         0 kB
+Private_Dirty:        96 kB
+Referenced:           96 kB
+Anonymous:            96 kB
+AnonHugePages:         0 kB
+Swap:                  0 kB
+KernelPageSize:        4 kB
+MMUPageSize:           4 kB
+Locked:                0 kB
+VmFlags: rd wr mr mp me ac sd
+c000000000-c004000000 rw-p 00000000 00:00 0
+Size:              65536 kB
+Rss:               21420 kB
+Pss:               21420 kB
+Shared_Clean:          0 kB
+Shared_Dirty:          0 kB
+Private_Clean:         0 kB
+Private_Dirty:     21420 kB
+Referenced:        21420 kB
+Anonymous:         21420 kB
+AnonHugePages:     10240 kB
+Swap:                  0 kB
+KernelPageSize:        4 kB
+MMUPageSize:           4 kB
+Locked:                0 kB
+VmFlags: rd wr mr mp me ac sd
+7f86412dc000-7f86438dd000 rw-p 00000000 00:00 0
+Size:              38916 kB
+Rss:                6668 kB
+Pss:                6668 kB
+Shared_Clean:          0 kB
+Shared_Dirty:          0 kB
+Private_Clean:         0 kB
+Private_Dirty:      6668 kB
+Referenced:         6668 kB
+Anonymous:          6668 kB
+AnonHugePages:      6144 kB
+Swap:                  0 kB
+KernelPageSize:        4 kB
+MMUPageSize:           4 kB
+Locked:                0 kB
+VmFlags: rd wr mr mp me ac sd
+7ffc29455000-7ffc29476000 rw-p 00000000 00:00 0                          [stack]
+Size:                132 kB
+Rss:                  12 kB
+Pss:                  12 kB
+Shared_Clean:          0 kB
+Shared_Dirty:          0 kB
+Private_Clean:         0 kB
+Private_Dirty:        12 kB
+Referenced:           12 kB
+Anonymous:            12 kB
+AnonHugePages:         0 kB
+Swap:                  0 kB
+KernelPageSize:        4 kB
+MMUPageSize:           4 kB
+Locked:                0 kB
+VmFlags: rd wr mr mp me gd ac
+7ffc29590000-7ffc29592000 r-xp 00000000 00:00 0                          [vdso]
+Size:                  8 kB
+Rss:                   4 kB
+Pss:                   0 kB
+Shared_Clean:          4 kB
+Shared_Dirty:          0 kB
+Private_Clean:         0 kB
+Private_Dirty:         0 kB
+Referenced:            4 kB
+Anonymous:             0 kB
+AnonHugePages:         0 kB
+Swap:                  0 kB
+KernelPageSize:        4 kB
+MMUPageSize:           4 kB
+Locked:                0 kB
+VmFlags: rd ex mr mp me de sd
+ffffffffff600000-ffffffffff601000 r-xp 00000000 00:00 0                  [vsyscall]
+Size:                  4 kB
+Rss:                   0 kB
+Pss:                   0 kB
+Shared_Clean:          0 kB
+Shared_Dirty:          0 kB
+Private_Clean:         0 kB
+Private_Dirty:         0 kB
+Referenced:            0 kB
+Anonymous:             0 kB
+AnonHugePages:         0 kB
+Swap:                  0 kB
+KernelPageSize:        4 kB
+MMUPageSize:           4 kB
+Locked:                0 kB
+VmFlags: rd ex

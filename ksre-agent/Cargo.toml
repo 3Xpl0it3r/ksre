@@ -5,5 +5,23 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[lib]
+name = "libagent"
+
+
+
 [dependencies]
+axum = "0.7.4"
+color-eyre = "0.6.2"
+lazy_static = "1.4.0"
+mintkv = "0.1.0"
 tokio = { version = "1.36.0", features = ["full"] }
+tokio-util = "0.7.10"
+
+[dev-dependencies]
+criterion = "0.5.1"
+
+
+[[bench]]
+name = "example_bench"
+harness = false

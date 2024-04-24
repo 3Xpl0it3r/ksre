@@ -1,4 +1,7 @@
+use libagent::*;
+
 #[tokio::main]
 async fn main() {
-    println!("Hello, world!");
+    let sre_agent = SreAgent::new().await;
+    sre_agent.run().await.unwrap();
 }

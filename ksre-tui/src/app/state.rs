@@ -84,7 +84,7 @@ impl AppState {
     }
 
     #[inline]
-    pub fn get_route(& self) -> Route {
+    pub fn get_route(&self) -> Route {
         self.route
     }
 
@@ -346,10 +346,6 @@ impl UserInput {
     #[inline]
     pub fn as_str(&self) -> &str {
         self.buffer.as_str()
-    }
-    #[inline]
-    pub fn clone(&self) -> String {
-        self.buffer.clone()
     }
     #[inline]
     pub fn is_completed(&self) -> bool {
