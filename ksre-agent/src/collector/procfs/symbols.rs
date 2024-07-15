@@ -3,8 +3,6 @@ use std::fs;
 
 use lazy_static::lazy_static;
 
-
-
 #[cfg(platform = "x86_64")]
 const UNISTD_HEAD_FILE: &str = "/usr/include/asm-generic/unistd.h";
 
@@ -35,13 +33,10 @@ fn get_symbols(unistd_file: &str) -> HashMap<i32, String> {
     syscall_define
 }
 
-
-pub enum ProcessSymbol{
+pub enum ProcessSymbol {
     ProcMemInfo,
     ProcPidIo,
 }
-
-
 
 #[cfg(test)]
 mod tests {

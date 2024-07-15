@@ -1,7 +1,6 @@
 use color_eyre::eyre::Result;
 use libksre::*;
 
-
 #[tokio::main]
 async fn main() -> Result<()> {
     let file_appender = tracing_appender::rolling::daily("./", "prefix.log");

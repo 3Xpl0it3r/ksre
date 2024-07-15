@@ -1,4 +1,5 @@
-mod backend;
+mod btree;
 mod mem;
-pub(crate) mod store;
+mod store;
 
+pub use store::Store;

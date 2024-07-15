@@ -1,18 +1,11 @@
-pub(crate) mod collect;
-pub(crate) mod serial;
+mod collector;
+pub mod process;
 
-pub(crate) mod proc_meminfo;
-pub(crate) mod proc_pid_io;
-pub(crate) mod proc_pid_maps;
-pub(crate) mod proc_pid_samps;
-pub(crate) mod proc_pid_stack;
-pub(crate) mod proc_pid_stat;
-pub(crate) mod proc_pid_status;
-pub(crate) mod proc_pid_syscall;
-pub(crate) mod process;
-
+pub(crate) mod meminfo;
 pub(crate) mod symbols;
-pub(super) mod util;
+pub mod systeminfo;
+
+mod util;
 
 pub(crate) enum ObjectKind {
     MemInfo,
@@ -25,4 +18,7 @@ pub(crate) enum ObjectKind {
     PidSyscall,
 }
 
-const MAGIC_NUMBER: u64 = 0xFFABCDEF;
+pub(super) const MAGIC_SPLIT_NUMBER: u64 = 0xFFBAABFF;
+pub(super) const MAGIC_ENDING_NUMBER: u64 = 0xFFABBAFF;
+
+pub use collector::Collector;

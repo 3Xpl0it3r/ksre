@@ -14,8 +14,11 @@ pub async fn tail_logs(
 ) {
     let pods: Api<Pod> = Api::namespaced(kube_client, namespace.as_str());
     let log_opts = LogParams::default();
-    let mut log_stream = pods.log_stream(pod_name.as_str(), &log_opts).await.unwrap().lines();
-
+    let mut log_stream = pods
+        .log_stream(pod_name.as_str(), &log_opts)
+        .await
+        .unwrap()
+        .lines();
 
     loop {
         tokio::select! {

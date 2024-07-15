@@ -8,6 +8,14 @@ edition = "2021"
 [lib]
 name = "libagent"
 
+[[bin]]
+name = "server"
+path = "src/bin/main_server.rs"
+
+[[bin]]
+name = "ksre"
+path = "src/bin/main_cli.rs"
+
 
 
 [dependencies]
@@ -17,6 +25,9 @@ lazy_static = "1.4.0"
 mintkv = "0.1.0"
 tokio = { version = "1.36.0", features = ["full"] }
 tokio-util = "0.7.10"
+ksre-lib = {path = "../ksre-lib"}
+ksre-lib-proc = {path = "../ksre-lib-proc"}
+clap = { version = "4.5.4", features = ["derive"] }
 
 [dev-dependencies]
 criterion = "0.5.1"
@@ -25,3 +36,4 @@ criterion = "0.5.1"
 [[bench]]
 name = "example_bench"
 harness = false
+

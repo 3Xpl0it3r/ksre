@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = [ "ksre-agent", "ksre-cli", "ksre-libs","ksre-tui"]
+members = [ "ksre-agent", "ksre-lib", "ksre-lib-proc","ksre-tui"]
 
 
 [profile.release]

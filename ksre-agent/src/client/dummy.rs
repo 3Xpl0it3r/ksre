@@ -5,7 +5,7 @@ use tokio::task::JoinHandle;
 pub struct DummyClient {
     // receive message from rx_reader, then send to clients
     tx_sender: Sender<String>,
-    pub fake_server: Vec<String>,
+    pub fake_server: Vec<u8>,
     task_handler: JoinHandle<()>,
 }
 
@@ -20,8 +20,8 @@ impl Default for DummyClient {
     fn default() -> Self {
         let (tx_writer, mut rx_reader) = mpsc::channel(1024);
         let task_handler = tokio::spawn(async move {
-            while let Some(event) = rx_reader.recv().await {
-                println!("dummy client: {:?}", event);
+            while let Some(buffer) = rx_reader.recv().await {
+                println!("Client receive : {:?}", buffer);
             }
         });
         DummyClient {

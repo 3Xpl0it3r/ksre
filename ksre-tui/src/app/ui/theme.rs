@@ -19,7 +19,6 @@ pub trait Kanagawa {
     const RED_PEACH: Color = Color::from_u32(0x00FF5D62);
     const RED_WAVE: Color = Color::from_u32(0x00E46876);
     const ORANGE_SURIMI: Color = Color::from_u32(0x00FFA066);
-
 }
 
 pub struct DefaultTheme {}

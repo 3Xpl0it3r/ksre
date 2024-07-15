@@ -15,7 +15,6 @@ use crate::app::{
 
 use super::theme::Kanagawa;
 
-
 pub(super) fn titled_block(title: &'static str) -> Block {
     Block::default()
         .title(title)
@@ -30,14 +29,12 @@ pub(super) fn vertical_chunks(constraits: Vec<Constraint>, size: Rect) -> Rc<[Re
         .split(size)
 }
 
-
 pub(super) fn horizontal_chunks(constraits: Vec<Constraint>, size: Rect) -> Rc<[Rect]> {
     Layout::default()
         .constraints(constraits)
         .direction(Direction::Horizontal)
         .split(size)
 }
-
 
 pub(super) fn user_input(input_char: &'_ str, input_mode: Mode) -> Paragraph {
     Paragraph::new(input_char)
@@ -73,8 +70,6 @@ pub(super) fn selected_tab(values: Vec<&str>, id_selected: usize) -> Tabs<'_> {
         .divider(" ")
         .padding(" ", "")
 }
-
-
 
 #[allow(dead_code)]
 pub(super) fn selectable_list(stateful_list: &StatefulList) -> List {

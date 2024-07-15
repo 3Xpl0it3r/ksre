@@ -83,7 +83,7 @@ impl From<KeyEvent> for CusKey {
 
 // CusKey[#TODO] (should add some comments)
 impl CusKey {
-    pub fn char(self) -> char{
+    pub fn char(self) -> char {
         match self {
             CusKey::A => 'a',
             CusKey::B => 'b',
@@ -147,12 +147,12 @@ impl CusKey {
             CusKey::X => "x",
             CusKey::Y => "y",
             CusKey::Z => "z",
-            CusKey::Space =>    "Space",
-            CusKey::Tab =>      "Tab",
-            CusKey::Enter =>    "Enter",
-            CusKey::None =>     "-",
-            CusKey::Backspace =>"Backspace",
-            CusKey::Esc =>      "Esc",
+            CusKey::Space => "Space",
+            CusKey::Tab => "Tab",
+            CusKey::Enter => "Enter",
+            CusKey::None => "-",
+            CusKey::Backspace => "Backspace",
+            CusKey::Esc => "Esc",
         }
     }
 }
